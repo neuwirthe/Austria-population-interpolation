@@ -9,7 +9,6 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 
-
 ```{r}
 suppressPackageStartupMessages({
   library(tidyverse)
@@ -21,103 +20,25 @@ suppressPackageStartupMessages({
 ```
 
 ```{r}
+source(path("utils","purl_and_source.R"))
+```
+
+```{r}
 save_path <- path(here(),"r_data")
 ```
 
 ```{r}
 if(!dir_exists(save_path)) dir_create(save_path)
 ```
-
-
-
-
-Read names of regions
-
 ```{r}
-tmpdir <- tempdir()
-download.file("https://www.statistik.at/verzeichnis/reglisten/gemliste_knz.xls",
-              path(tmpdir,"gemliste_knz.xls"),
-              quiet=TRUE)
-read_excel(path(tmpdir,"gemliste_knz.xls"),skip=3) |>
-  select(1:2) |>
-  drop_na() |>
-  rename(GKZ=1,
-         Name=2) |>
-  mutate_at(vars(GKZ),as.integer) ->
-  namen_gemeinden
-```
-
-
-```{r}
-download.file("https://www.statistik.at/verzeichnis/reglisten/polbezirke.xls",
-              path(tmpdir,"polbezirke.xls"),
-              quiet=TRUE)
-read_excel(path(tmpdir,"polbezirke.xls"),skip=3) |>
-  select(1:4) |>
-  drop_na() |>
-  rename(BundeslandID=1,
-         Bundesland=2,
-         BKZ=3,
-         Name=4)|>
-  mutate_at(vars(BundeslandID,BKZ),as.integer) |>
-  mutate(Name=str_replace(Name,fixed("(")," (")) ->
-  namen_bezirke
-
-namen_bezirke |>
-  select(1:2) |>
-  distinct() |>
-  bind_rows(
-    tibble(
-      BundeslandID=10,
-      Bundesland="Österreich"
-    )
-  ) ->
-  namen_bl
-```
-
-
-
-Read csv files from repository upt to year 2022
-
-```{r}
-2002:2022 |>
-  map(
-  \(i)suppressMessages(
-    read_csv2(
-      paste0(
-      "https://data.statistik.gv.at/data/OGD_bevstandjbab2002_BevStand_",
-      i,
-      ".csv")))
-  ) |> 
-  reduce(bind_rows) |>
-  mutate(Jahr=str_sub(`C-A10-0`,5,8) |> as.integer()) |>
-  mutate(Geschlecht=str_sub(`C-C11-0`,5,5)) |>
-  mutate(Geschlecht=ifelse(Geschlecht==1,"m","w")) |>
-  mutate(Alter=str_sub(`C-GALTEJ112-0`,11,13)) |> 
-  mutate(Alter=as.integer(Alter)-1) |>
-  mutate(Alter=as.integer(Alter)) |>
-  mutate(GKZ=str_sub(`C-GRGEMAKT-0`,10,14) |> as.integer()) |>
-  mutate(pop=`F-ISIS-1` |> as.integer()) |>
-  select(Jahr,GKZ,Alter,Geschlecht,pop) ->
-  pop_GKZ_age_1y_gender_yearly
+purl_and_source(path("utils/get_base_files.Rmd"))
 ```
 
 ```{r}
-pop_GKZ_age_1y_gender_yearly |>
-  left_join(namen_gemeinden) ->
-  pop_GKZ_age_1y_gender_yearly  
+load(path(save_path,"pop_GKZ_age_1y_gender_yearly.RData"))
 ```
 
-
-Save yearly data for communities (Gemeinden)
-
-```{r}
-save(pop_GKZ_age_1y_gender_yearly,
-     file=path(save_path,
-               "pop_GKZ_age_1y_gender_yearly.RData"))
-```
-
-Yearly data for disctices (Bezirke)
+Yearly data for districts (Bezirke)
 
 ```{r}
 pop_GKZ_age_1y_gender_yearly |>

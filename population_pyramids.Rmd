@@ -1,0 +1,213 @@
+---
+title: "population pyramids"
+output: html_document
+date: '2022-06-02'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+suppressPackageStartupMessages({
+  library(tidyverse)
+  library(fs)
+  library(here)
+  library(lubridate)
+  library(readxl)
+  library(lemon)
+  library(gganimate)
+  library(numbers)
+})
+```
+
+```{r}
+source(path("utils","purl_and_source.R"))
+```
+
+
+```{r}
+gemeinde_nr <- 30603
+```
+
+```{r}
+save_path <- path(here(),"r_data")
+```
+
+```{r}
+if(!dir_exists(save_path)) dir_create(save_path)
+```
+```{r}
+purl_and_source(path("utils/get_base_files.Rmd"))
+```
+```{r}
+load(
+  path(save_path,
+  "pop_GKZ_age_1y_gender_yearly.RData"))
+```
+
+
+```{r}
+pop_GKZ_age_1y_gender_yearly |>
+  filter(GKZ==gemeinde_nr) ->
+  gemeinde_age_1y_gender_yearly
+```
+
+
+
+
+```{r}
+paste(2002:2023,"12","31",sep="-") |>
+  as.Date() |>
+  keep(\(x)isoweek(x)==53) |>
+  year() ->
+  years_with_week_53
+```
+
+
+
+```{r}
+expand_grid(
+  Jahr= 2002:2022,
+  Woche=1:52,
+  GKZ = gemeinde_age_1y_gender_yearly |>
+    pull(GKZ) |> unique(),
+  Alter=gemeinde_age_1y_gender_yearly |>
+    pull(Alter) |> unique(),
+  Geschlecht=c("m","w")) |>
+  mutate(Jahr_Woche=Jahr+(Woche-1)/52) |>
+  arrange(Jahr,Woche,GKZ,Alter,Geschlecht,Jahr_Woche) ->
+  interpolation_BKZ_input
+```
+
+
+```{r}
+expand_grid(
+  Jahr= 2002:2022,
+  Woche=1:52,
+  GKZ = gemeinde_age_1y_gender_yearly |>
+    pull(GKZ) |> unique(),
+  Alter=gemeinde_age_1y_gender_yearly |>
+    pull(Alter) |> unique(),
+  Geschlecht=c("m","w")) |>
+  left_join(gemeinde_age_1y_gender_yearly) |>
+  replace_na(list(pop=0)) |>
+  mutate(pop=ifelse(Woche==1,pop,NA)) ->
+  interpolation_BKZ_base
+```
+
+
+
+```{r}
+interpolation_BKZ_input |>
+  left_join(interpolation_BKZ_base # |>
+) |>
+  group_by(GKZ,Alter,Geschlecht) |>
+  mutate(pop_new=approxfun(cur_data() |> 
+                             filter(!is.na(pop)) |> 
+                             pull(Jahr_Woche),
+                           cur_data() |> 
+                             filter(!is.na(pop)) |> 
+                             pull(pop),
+                           rule=2)(Jahr_Woche)
+         ) |>
+  ungroup() |>
+  select(-pop) |>
+  rename(pop=pop_new) |>
+  select(Jahr,Woche,Jahr_Woche,everything()) |>
+  select(-Jahr_Woche) ->
+  gemeinde_age_1y_gender_weekly
+```
+
+
+
+```{r}
+gemeinde_age_1y_gender_weekly |>
+  bind_rows(
+    gemeinde_age_1y_gender_weekly |>
+    filter(Woche==1) |>
+  mutate(Jahr=Jahr-1,
+         Woche=53) |>
+  filter(Jahr > min(Jahr)) |>
+    filter(Jahr %in% years_with_week_53 |
+             Woche < 53)
+  ) |>
+  arrange(Jahr,Woche,GKZ,Alter,Geschlecht) ->
+gemeinde_age_1y_gender_weekly   
+```
+
+
+
+
+```{r}
+date_year_week <-
+  tibble(
+    Datum =  
+      seq(as.Date("2001-12-31"),as.Date("2023-01-06"),by="7 days")) |>
+      mutate(Jahr=isoyear(Datum),
+             Woche=isoweek(Datum))
+    
+```
+
+
+
+```{r}
+gemeinde_age_1y_gender_weekly |>
+  left_join(date_year_week) |>
+  select(Jahr,Woche,Datum,everything()) ->
+gemeinde_age_1y_gender_weekly  
+```
+
+```{r}
+gemeinde_age_1y_gender_weekly |>
+  ungroup() |>
+  left_join(
+gemeinde_age_1y_gender |>
+  select(GKZ,Name) |>
+  distinct()) |>
+  mutate(Woche=as.integer(Woche)) ->
+  gemeinde_age_1y_gender_weekly
+```
+
+```{r}
+gemeinde_age_1y_gender_weekly |>
+  mutate(Alter=factor(as.character(Alter),
+                      levels=as.character(0:99))) |>
+  mutate(Geschlecht=factor(Geschlecht,levels=c("w","m"))) |>
+#  filter(Jahr>= 2010) |>
+#  filter(mod(Woche,8)==1) |>
+  filter(Woche==1) |>
+  filter(Datum <= Sys.Date()) |>
+ggplot( 
+       mapping = aes(x = ifelse(Geschlecht == "m", yes = -pop, no = pop), 
+                     y = Alter, fill = Geschlecht)) +
+  geom_col(width=1.1) +
+  scale_x_symmetric(labels = abs) +
+  labs(x = "Population") +
+  theme_minimal() +
+  labs(title="{closest_state}") +
+  scale_y_discrete(breaks=as.character(seq(0,100,by=10))) ->
+  p
+```
+
+```{r}
+p + transition_states(Datum,transition_length = 0, state_length = 1) -> anim
+  
+```
+
+```{r}
+animate(anim,nframes=300)
+```
+
+```{r}
+gemeinde_age_1y_gender_weekly |>
+  select(Jahr,Woche,Datum) |> 
+  filter(Datum <= Sys.Date()) |>
+#  filter(mod(Woche,4)==1) |>
+  distinct() |>
+  group_by(Datum) |>
+  tally() |>
+  filter(n>1)
+```
+
