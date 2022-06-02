@@ -4,3 +4,5 @@
 .Ruserdata
 *.html
 */*.html
+r_data
+r_data/*
