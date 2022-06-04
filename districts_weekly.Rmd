@@ -8,6 +8,10 @@ date: "`r Sys.Date()`"
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+```{r}
+do_download <- TRUE
+```
+
 
 ```{r}
 suppressPackageStartupMessages({
@@ -30,8 +34,16 @@ save_path <- path(here(),"r_data")
 ```{r}
 if(!dir_exists(save_path)) dir_create(save_path)
 ```
+
 ```{r}
-purl_and_source(path("utils/get_base_files.Rmd"))
+purl_and_source(path(here(),"utils","get_region_names.Rmd"))
+```
+
+
+```{r}
+if(do_download){
+purl_and_source(path(here(),"utils","get_base_files.Rmd"))
+}
 ```
 
 ```{r}
@@ -42,7 +54,7 @@ Yearly data for districts (Bezirke)
 
 ```{r}
 pop_GKZ_age_1y_gender_yearly |>
-  mutate(BKZ=floor(GKZ/100)) |>
+  mutate(BKZ=floor(GKZ/100) |> as.integer()) |>
   group_by(Jahr,BKZ,Alter,Geschlecht) |>
   summarise(pop=sum(pop)) |>
   ungroup() ->
@@ -65,51 +77,33 @@ save(pop_BKZ_age_1y_gender_yearly,
 
 
 ```{r}
-paste(2002:2023,"12","31",sep="-") |>
-  as.Date() |>
-  keep(\(x)isoweek(x)==53) |>
-  year() ->
-  years_with_week_53
+dates_years_weeks <-
+  tibble(
+    Datum=seq(as.Date("2001-12-31"),as.Date("2023-01-01"),by="7 days"),
+    Jahr=isoyear(Datum),
+    Woche=isoweek(Datum)
+  ) |>
+  group_by(Jahr) |>
+  mutate(total_weeks=max(Woche)) |>
+  ungroup() |>
+  mutate(Jahr_Woche=Jahr+(Woche-1)/total_weeks) |>
+  select(-total_weeks) |>
+  mutate_at(vars(Jahr,Woche),as.integer)
 ```
-
-
 
 ```{r}
 expand_grid(
-  Jahr= 2002:2022,
-  Woche=1:52,
+  dates_years_weeks,
   BKZ = pop_BKZ_age_1y_gender_yearly |>
     pull(BKZ) |> unique(),
   Alter=pop_BKZ_age_1y_gender_yearly |>
     pull(Alter) |> unique(),
-  Geschlecht=c("m","w")) |>
-  mutate(Jahr_Woche=Jahr+(Woche-1)/52) |>
-  arrange(Jahr,Woche,BKZ,Alter,Geschlecht,Jahr_Woche) ->
-  interpolation_BKZ_input
-```
-
-
-```{r}
-expand_grid(
-  Jahr= 2002:2022,
-  Woche=1:52,
-  BKZ = pop_BKZ_age_1y_gender_yearly |>
-    pull(BKZ) |> unique(),
-  Alter=pop_BKZ_age_1y_gender_yearly |>
-    pull(Alter) |> unique(),
-  Geschlecht=c("m","w")) |>
-  left_join(pop_BKZ_age_1y_gender_yearly) |>
-  replace_na(list(pop=0)) |>
-  mutate(pop=ifelse(Woche==1,pop,NA)) ->
-  interpolation_BKZ_base
-```
-
-
-
-```{r}
-interpolation_BKZ_input |>
-  left_join(interpolation_BKZ_base # |>
-) |>
+  Geschlecht=c("m","w")) |> 
+  left_join(pop_BKZ_age_1y_gender_yearly |>
+              select(-Name) |>
+              mutate(Woche=1)) |>
+  left_join(namen_bezirke |> select(BKZ,Name)) |>
+  left_join(dates_years_weeks) |>
   group_by(BKZ,Alter,Geschlecht) |>
   mutate(pop_new=approxfun(cur_data() |> 
                              filter(!is.na(pop)) |> 
@@ -122,58 +116,10 @@ interpolation_BKZ_input |>
   ungroup() |>
   select(-pop) |>
   rename(pop=pop_new) |>
-  select(Jahr,Woche,Jahr_Woche,everything()) |>
   select(-Jahr_Woche) ->
   pop_BKZ_age_1y_gender_weekly
 ```
 
-
-
-```{r}
-pop_BKZ_age_1y_gender_weekly |>
-  bind_rows(
-    pop_BKZ_age_1y_gender_weekly |>
-    filter(Woche==1) |>
-  mutate(Jahr=Jahr-1,
-         Woche=53) |>
-  filter(Jahr > min(Jahr)) |>
-    filter(Jahr %in% years_with_week_53 |
-             Woche < 53)
-  ) |>
-  arrange(Jahr,Woche,BKZ,Alter,Geschlecht) ->
-pop_BKZ_age_1y_gender_weekly   
-```
-
-
-
-
-```{r}
-date_year_week <-
-  tibble(
-    Datum =  
-      seq(as.Date("2001-12-31"),as.Date("2023-01-06"),by="7 days")) |>
-      mutate(Jahr=isoyear(Datum),
-             Woche=isoweek(Datum))
-    
-```
-
-
-
-```{r}
-pop_BKZ_age_1y_gender_weekly |>
-  left_join(date_year_week) |>
-  select(Jahr,Woche,Datum,everything()) ->
-pop_BKZ_age_1y_gender_weekly  
-```
-
-
-
-```{r}
-pop_BKZ_age_1y_gender_weekly |>
-  left_join(namen_bezirke |>
-              select(BKZ,Name)) ->
-  pop_BKZ_age_1y_gender_weekly
-```
 
 
 
@@ -187,7 +133,7 @@ save(pop_BKZ_age_1y_gender_weekly,
 
 ```{r}
 pop_BKZ_age_1y_gender_weekly |> 
-  mutate(BundeslandID=floor(BKZ/100)) |>
+  mutate(BundeslandID=floor(BKZ/100) |> as.integer()) |>
   group_by(Jahr,Woche,Datum,BundeslandID,Alter,Geschlecht) |>
   summarise(pop=sum(pop)) |>
   ungroup() ->

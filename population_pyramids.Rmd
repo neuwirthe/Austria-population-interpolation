@@ -82,6 +82,7 @@ expand_grid(
 ```
 
 
+
 ```{r}
 expand_grid(
   Jahr= 2002:2022,

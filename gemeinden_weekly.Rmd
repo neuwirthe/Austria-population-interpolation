@@ -1,0 +1,201 @@
+---
+title: "gemeinden weekly"
+output: html_document
+date: '2022-06-03'
+---
+
+
+This file creates weekly interpolated population data for communities (Gemeinden).
+
+Setting `GKZ_to_use` fo a vector of Gemeindekennzahlen (within this file or in an other fulr purling this file) will produce the result only for the selected Gemeinden.
+
+If `GKZ_to_use` is NULL, a complete dataset for all Gemeinden will be produced.      
+This takes time and memory. I set        
+`R_MAX_VSIZE=128Gb` on a machine with 64Gb of real memory, and it tool about 45 minutes.
+
+
+
+```{r}
+#GKZ_to_use <- c(30603)
+```
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+if(!exists("GKZ_to_use")) GKZ_to_use <- NULL
+```
+
+
+```{r}
+#GKZ_to_use <- c(30603)
+```
+
+```{r}
+suppressPackageStartupMessages({
+  library(tidyverse)
+  library(fs)
+  library(here)
+  library(lubridate)
+  library(readxl)
+  library(furrr)
+  library(purrr)
+  library(numbers)
+  library(tictoc)
+})
+```
+
+```{r}
+source(path("utils","purl_and_source.R"))
+```
+
+```{r}
+save_path <- path(here(),"r_data")
+```
+
+```{r}
+purl_and_source(path(here(),"utils","get_region_names.Rmd"))
+```
+
+
+```{r}
+load(path(save_path,"pop_GKZ_age_1y_gender_yearly.RData"))
+```
+
+```{r}
+dates_years_weeks <-
+  tibble(
+    Datum=seq(as.Date("2001-12-31"),as.Date("2023-01-01"),by="7 days"),
+    Jahr=isoyear(Datum),
+    Woche=isoweek(Datum)
+  ) |>
+  group_by(Jahr) |>
+  mutate(total_weeks=max(Woche)) |>
+  ungroup() |>
+  mutate(Jahr_Woche=Jahr+(Woche-1)/total_weeks) |>
+  select(-total_weeks) |>
+  mutate_at(vars(Jahr,Woche),as.integer)
+```
+
+
+```{r}
+if(is.null(GKZ_to_use)){
+  data_to_use <- pop_GKZ_age_1y_gender_yearly
+} else {
+  data_to_use <- pop_GKZ_age_1y_gender_yearly |>
+    filter(GKZ %in% GKZ_to_use)
+}
+rm(pop_GKZ_age_1y_gender_yearly)
+```
+
+
+
+```{r}
+expand_grid(
+  dates_years_weeks,
+  GKZ = data_to_use |>
+    pull(GKZ) |> unique(),
+  Alter= 0:100,
+  Geschlecht=c("m","w")) |> 
+  left_join(data_to_use  |>
+              select(-Name) |>
+              mutate(Woche=1)) |>
+  left_join(namen_gemeinden) ->
+  tmp_df
+rm(data_to_use)
+gc() |> invisible()
+gc() |> invisible()
+```
+
+
+```{r}
+save(tmp_df,
+     file=path(save_path,"tmp_df.RData"))
+```
+
+
+```{r}
+rm(tmp_df)
+gc() |> invisible()
+```
+
+
+-=-=-=-=-=-=-=-=-=-=
+
+Here the loop starts
+
+```{r}
+plan(multisession, workers = 8)
+bl_num <- 1:9
+pop_GKZ_age_1y_gender_weekly <-
+  tibble()
+tic()
+
+#bl_num <- 1
+
+for (bl in bl_num) {
+  load(path(save_path, "tmp_df.RData"))
+  tmp_df |>
+    filter((floor(GKZ / 10000) |> as.integer()) == bl) ->
+    filtered_df
+  if(nrow(filtered_df) == 0) next
+    filtered_df |>  
+    split(~ GKZ + Alter + Geschlecht) -> xxx
+
+  rm(tmp_df)
+  gc() |> invisible()
+  gc() |> invisible()
+
+  xxx |>
+    future_map_dfr(
+      \(x)
+        mutate(x,
+          pop_new = approxfun(
+            x |>
+              filter(!is.na(pop)) |>
+              pull(Jahr_Woche),
+            x |> filter(!is.na(pop)) |>
+              pull(pop),
+            rule = 2
+          )(Jahr_Woche)
+        ) |>
+          select(-pop) |>
+          rename(pop = pop_new)
+    ) ->
+  yyy
+  gc() |> invisible()
+  gc() |> invisible()
+  bind_rows(
+    pop_GKZ_age_1y_gender_weekly,
+    yyy
+  ) ->
+  pop_GKZ_age_1y_gender_weekly
+  rm(yyy)
+  gc() |> invisible()
+  gc() |> invisible()
+}
+toc()
+```
+```{r}
+unlink(path(save_path,"tmp_df.RData"))
+```
+
+
+```{r}
+if(is_null(GKZ_to_use)){
+  save(pop_GKZ_age_1y_gender_weekly,
+       file=path(save_path,"pop_GKZ_age_1y_gender_weekly.RData"))
+} else {
+  df_name <- paste(c("pop_GKZ_age_1y_gender_weekly",GKZ_to_use),collapse="_")
+  assign(df_name,pop_GKZ_age_1y_gender_weekly,
+         envir=.GlobalEnv)
+  save(list=df_name,
+       file=path(save_path,
+                 paste0(df_name,".RData")))
+}
+```
+
+
