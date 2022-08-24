@@ -1,0 +1,51 @@
+---
+title: "quartalsweise"
+author: "Erich Neuwirth"
+date: "2022-08-23"
+output: html_document
+---
+
+
+
+```{r}
+suppressPackageStartupMessages({
+  library(tidyverse)
+  library(fs)
+  library(here)
+  library(lubridate)
+  library(readxl)
+  library(furrr)
+  library(purrr)
+  library(numbers)
+  library(tictoc)
+})
+```
+
+```{r}
+source(path("utils","purl_and_source.R"))
+```
+
+```{r}
+save_path <- path(here(),"r_data")
+```
+
+```{r}
+load(path(here(),"r_data",
+          "pop_aut_bl_weekly.RData"))
+```
+
+```{r}
+pop_aut_bl_weekly |>
+  mutate(Quartal=quarter(Datum)) |>
+  mutate(start_date=quarter(Datum,type="date_first")) |>
+  group_by(Quartal,start_date,BundeslandID,Bundesland) |>
+  summarise(pop=mean(pop)) ->
+  pop_aut_bl_quarter
+```
+
+
+```{r}
+save(pop_aut_bl_quarter,
+     file=path(save_path,"pop_aut_bl_quarter.RData"))
+```
+

@@ -7,9 +7,10 @@ date: '2022-06-03'
 
 This file creates weekly interpolated population data for communities (Gemeinden).
 
-Setting `GKZ_to_use` fo a vector of Gemeindekennzahlen (within this file or in an other fulr purling this file) will produce the result only for the selected Gemeinden.
+Setting `GKZ_to_use` fo a vector of Gemeindekennzahlen (within this file or in an other filesx purling this file) will produce the result only for the selected Gemeinden.
 
-If `GKZ_to_use` is NULL, a complete dataset for all Gemeinden will be produced.      
+If `GKZ_to_use` is NULL, a complete dataset for all Gemeinden will be produced.       
+If `GKZ_to_use` is undefined, it will be set to NULL.          
 This takes time and memory. I set        
 `R_MAX_VSIZE=128Gb` on a machine with 64Gb of real memory, and it tool about 45 minutes.
 

@@ -1,0 +1,138 @@
+---
+title: "Sterbetafel"
+author: "Erich Neuwirth"
+date: '2022-07-05'
+output: html_document
+---
+
+
+```{r}
+suppressPackageStartupMessages({
+  library(tidyverse)
+  library(openxlsx)
+  library(readODS)
+  library(fs)
+  library(here)
+  library(readxl)
+})
+```
+
+```{r}
+sheet_names <-
+  list_ods_sheets(
+    path(here(),"ods_data",
+         "Jaehrliche_Sterbetafeln_1947_bis_2021_fuer_Oesterreich.ods")
+  )
+
+
+```
+
+```{r}
+sheet_names
+```
+```{r}
+var_names <-
+  c("q","l","d","L","T","e")
+var_names <-
+  c("Alter",paste0(var_names,"_m"),
+    paste0(var_names,"_w"))
+```
+
+```{r, warning=FALSE, message=FALSE}
+sheet_names |>
+  map(\(x){
+     suppressMessages(
+       suppressWarnings(read_excel(
+       path(here(),"xlsx_data",
+         "Jaehrliche_Sterbetafeln_1947_bis_2021_fuer_Oesterreich.xlsx"),
+  sheet=x,
+  skip=ifelse(as.integer(x) <= 2001,12,7),
+  col_names = FALSE)
+  )) |>
+    select(1:13) |>
+    set_names(var_names) |>
+    mutate(Alter=as.integer(Alter)) |>
+    mutate(Jahr=as.integer(x)) |>
+      select(Jahr,everything()) |>
+      drop_na()
+  }  
+) |>
+  reduce(bind_rows) ->
+  life_expectancy_gender
+```
+
+```{r}
+life_expectancy_gender |>
+  filter(Jahr >= 1970) |>
+  #filter(Alter==0|Alter==20|Alter==60) |>
+  filter(Alter==0|Alter==20) |>
+  select(Jahr,Alter,e_m,e_w) |>
+  rename(Männer=e_m,Frauen=e_w)|>
+  pivot_longer(cols=Männer:Frauen,
+               names_to = "Geschlecht",
+               values_to="Lebenserwartung") |>
+  mutate(Lebenserwartung=Lebenserwartung+Alter) |>
+  mutate(Alter=paste0("für ",Alter,"-jährige")) |>
+  ggplot(aes(x=Jahr,y=Lebenserwartung,color=Geschlecht,
+             linetype=Alter)) +
+  geom_line() +
+  scale_x_continuous(breaks=seq(1900,2100,by=10)) +
+  scale_y_continuous(minor_breaks = 50:100) +
+  theme_minimal() +
+  scale_linetype_discrete("Lebenserwartung") +
+  guides(linetype=guide_legend(reverse=TRUE))
+  
+```
+
+
+```{r}
+life_expectancy_gender |>
+  filter(Alter==20) |>
+  select(Jahr,e_m,e_w) |>
+  rename(Männer=e_m,Frauen=e_w)|>
+  pivot_longer(cols=Männer:Frauen,
+               names_to = "Geschlecht",
+               values_to="Lebenserwartung") |>
+  mutate(Lebenserwartung=Lebenserwartung+20) |>
+  ggplot(aes(x=Jahr,y=Lebenserwartung,color=Geschlecht)) +
+  geom_line() +
+  labs(y="Lebenserwartung 20-jähriger") + 
+  theme_minimal()
+```
+
+
+
+
+
+
+
+```{r}
+life_expectancy_gender |>
+  filter(Jahr >= 1970) |>
+  filter(Alter==60|Alter==70|Alter==80) |>
+#  filter(Alter==0|Alter==20) |>
+  select(Jahr,Alter,e_m,e_w) |>
+  rename(Männer=e_m,Frauen=e_w)|>
+  pivot_longer(cols=Männer:Frauen,
+               names_to = "Geschlecht",
+               values_to="Lebenserwartung") |>
+  mutate(Lebenserwartung=Lebenserwartung+Alter) |>
+  mutate(Alter=paste0("für ",Alter,"-jährige")) |>
+  ggplot(aes(x=Jahr,y=Lebenserwartung,color=Geschlecht,
+             linetype=Alter)) +
+  geom_line() +
+  scale_x_continuous(breaks=seq(1900,2100,by=10)) +
+  scale_y_continuous(minor_breaks = 50:100) +
+  theme_minimal() +
+  scale_linetype_discrete("Lebenserwartung") +
+  guides(linetype=guide_legend(reverse=TRUE))
+```
+  
+```{r}
+life_expectancy_gender |>
+  filter(Jahr >= 1970) |>
+  filter(Alter==0) |>
+  select(Jahr,e_w,e_m) |>
+  mutate_at(vars(e_m,e_w),list(pm=~.-lag(.)))
+```
+  

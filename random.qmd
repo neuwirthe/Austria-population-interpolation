@@ -1,0 +1,19 @@
+---
+title: "Untitled"
+format: html
+editor: visual
+---
+
+```{r}
+library(tidyverse)
+library(lubridate)
+```
+
+```{r}
+pop_aut_bl_weekly |>
+  filter(Woche==1) |>
+  filter(BundeslandID==10) |>
+  filter(year(Datum) >= 2017 ) |>
+  select(-Bundesland)
+```
+

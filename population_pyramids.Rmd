@@ -55,6 +55,14 @@ pop_GKZ_age_1y_gender_yearly |>
 ```
 
 
+```{r}
+pop_GKZ_age_1y_gender_yearly |>
+  mutate(BundeslandID=floor(GKZ/10000)) |>
+  group_by(Jahr,BundeslandID,Alter,Geschlecht) |>
+  summarise(pop=sum(pop)) |>
+  ungroup() ->
+  pop_bl_age_1y_gender_yearly
+```
 
 
 ```{r}
@@ -193,9 +201,101 @@ ggplot(
 ```
 
 ```{r}
-p + transition_states(Datum,transition_length = 0, state_length = 1) -> anim
-  
+source(path("utils","get_region_names.R"))
 ```
+
+```{r}
+pop_bl_age_1y_gender_yearly |>
+  group_by(BundeslandID,Jahr) |>
+  summarise(pop_tot=sum(pop)) |>
+  ungroup() ->
+  pop_bl_tot_yearly
+```
+
+
+```{r}
+pop_bl_age_1y_gender_yearly |>
+  left_join(pop_bl_tot_yearly) |>
+  mutate(pop_normed=pop/pop_tot*100000) ->
+pop_bl_age_1y_gender_yearly  
+```
+
+```{r}
+pop_bl_age_1y_gender_yearly |>
+  left_join(namen_bl) |>
+  filter(Jahr==max(Jahr)) |>
+  mutate(Alter=factor(as.character(Alter),
+                      levels=as.character(0:99))) |>
+  mutate(Geschlecht=factor(Geschlecht,levels=c("w","m"))) |>
+ggplot( 
+      aes(x = ifelse(Geschlecht == "m", yes = -pop, no = pop), 
+                     y = Alter, fill = Geschlecht)) +
+  geom_col(width=1.1) +
+  scale_x_symmetric(labels = \(x)abs(x/1000)) +
+  scale_y_discrete(breaks=as.character(seq(0,100,by=10))) +
+  labs(x = "Bevölkerung in Tausend",
+       title="Bevölkerung nach Alter (Stand 2022)") +
+  facet_wrap(vars(Bundesland),scales="free_x") +
+  guides(fill=guide_legend(reverse=TRUE)) +
+  theme_minimal() +
+  theme(legend.position = "bottom",
+        legend.text = element_text(size=5),
+        legend.title = element_text(size=5),
+        legend.key.size = unit(0.3,"cm"),
+        plot.background=element_rect(color="white"),
+        axis.text=element_text(size=4),
+        axis.title=element_text(size=5),
+        strip.text=element_text(size=5),
+        title=element_text(size=6)
+      ) ->
+  chart_pops
+ggsave("chart_pops.png",
+  chart_pops,
+       width=3,
+       height=4.5)
+```
+
+
+
+```{r}
+pop_bl_age_1y_gender_yearly |>
+  left_join(namen_bl) |>
+  filter(Jahr==max(Jahr)) |>
+  mutate(Alter=factor(as.character(Alter),
+                      levels=as.character(0:99))) |>
+  mutate(Geschlecht=factor(Geschlecht,levels=c("w","m"))) |>
+ggplot( 
+      aes(x = ifelse(Geschlecht == "m", 
+                     yes = -pop_normed, 
+                     no = pop_normed), 
+                     y = Alter, fill = Geschlecht)) +
+  geom_col(width=1.1) +
+  scale_x_symmetric(labels=abs) + #labels = \(x)abs(x/1000)) +
+  scale_y_discrete(breaks=as.character(seq(0,100,by=10))) +
+  labs(x = "Bevölkerung",
+       title="Bevölkerung nach Alter (Stand 2022)",
+       caption="Normiert auf Gesamtbevölkerung 100.000") +
+  facet_wrap(vars(Bundesland)) +
+  guides(fill=guide_legend(reverse=TRUE)) +
+  theme_minimal() +
+  theme(legend.position = "bottom",
+        legend.text = element_text(size=5),
+        legend.title = element_text(size=5),
+        legend.key.size = unit(0.3,"cm"),
+        plot.background=element_rect(color="white"),
+        axis.text=element_text(size=4),
+        axis.title=element_text(size=5),
+        strip.text=element_text(size=5),
+        title=element_text(size=6)
+      ) ->
+  chart_pops_normed
+ggsave("chart_pops_normed.png",
+  chart_pops_normed,
+       width=3,
+       height=4.5)
+```
+
+
 
 ```{r}
 animate(anim,nframes=300)
