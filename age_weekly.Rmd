@@ -170,25 +170,6 @@ save(pop_aut_bl_age_1y_gender_weekly,
                "pop_aut_bl_age_1y_gender_weekly.Rdata"))
 ```
 
-
-
-```{r}
-pop_aut_bl_age_1y_gender_weekly |>
-  mutate(Altersgruppe=floor((Alter-1)/5)+1) |>
-  group_by(Jahr,Woche,Datum,BundeslandID,Altersgruppe,Geschlecht) |>
-  summarise(pop=sum(pop)) |>
-  ungroup() ->
-pop_aut_bl_age_5y_gender_weekly  
-```
-
-```{r}
-save(pop_aut_bl_age_5y_gender_weekly,
-     file=path(save_path,
-               "pop_aut_bl_age_5y_gender_weekly.Rdata"))
-```
-
-
-
 ```{r}
 pop_aut_bl_age_1y_gender_weekly |>
   group_by(Jahr,Woche,Datum,BundeslandID,Bundesland,Geschlecht) |>

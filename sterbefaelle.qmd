@@ -1,0 +1,128 @@
+---
+title: "Todesfälle"
+format: html
+---
+
+
+
+```{r}
+suppressPackageStartupMessages({
+  library(tidyverse)
+  library(magrittr)
+  library(fs)
+  library(here)
+  library(ggiraph)
+  library(scales)
+  library(gt)
+  library(ggmosaic)
+  library(htmlwidgets)
+  library(cowplot)
+  library(lubridate)
+  })
+```
+
+
+```{r}
+tibble(Jahr=2000:2023,
+  date=paste0(Jahr,"-12-31") |>
+         as.Date(),
+       week=isoweek(date)) |>
+  filter(week==53) |>
+  pull(Jahr) ->
+  years_with_53_weeks
+```
+
+
+
+```{r}
+sterb_raw_5y <-
+  read_csv2("https://data.statistik.gv.at/data/OGD_gest_kalwo_alter_GEST_KALWOCHE_5J_100.csv")
+```
+
+```{r}
+sterb_raw_5y %>%
+  mutate(Jahr=str_sub(`C-KALWOCHE-0`,6,9) %>% as.integer()) %>%
+  mutate(Woche=str_sub(`C-KALWOCHE-0`,10,11) %>% as.integer()) %>%#
+#  mutate(Alter=ifelse(str_sub(`C-ALTERGR65-0`,12,12)==1,"<65","65+")) %>%
+  mutate(Altersgruppe=str_sub(`C-ALTER5-0`,8,9) |> as.integer()) %>%
+  mutate(Alter=paste((Altersgruppe-1)*5,(Altersgruppe-1)*5+4,sep="-")) %>%
+    mutate(BundeslandID=str_sub(`C-B00-0`,5,5) |> as.integer()) %>%
+  mutate(Geschlecht=ifelse(str_sub(`C-C11-0`,5,5)==1,"männlich","weiblich")) %>%
+  mutate(Anzahl=`F-ANZ-1`) %>%
+  select(Jahr,Woche,
+         Altersgruppe,
+        # Alter,
+         Geschlecht,BundeslandID,Anzahl) ->
+ sterbedaten_5y_tmp
+
+```
+
+
+```{r}
+with(sterbedaten_5y_tmp,
+     expand_grid(
+       Jahr = Jahr %>% unique(),
+       Woche = Woche %>% unique(),
+       Altersgruppe = Altersgruppe %>% unique(),
+#       Alter = Alter %>% unique(),
+       Geschlecht=Geschlecht %>% unique(),
+       BundeslandID=BundeslandID %>% unique()
+     ) ) |> 
+  arrange(Jahr,Woche,Altersgruppe) %>%
+  filter(Woche <= 52 |  Jahr %in% years_with_53_weeks) |>
+  left_join( sterbedaten_5y_tmp) |>
+  replace_na(list(Anzahl=0)) |>
+  mutate(Alter=paste((Altersgruppe-1)*5,(Altersgruppe-1)*5+4,sep="-")) %>%
+  select(Jahr,Woche,Altersgruppe,Alter,everything()) ->
+  sterbedaten_5y_complete
+```
+
+```{r}
+sterbedaten_5y_complete |>
+  select(Altersgruppe,Alter) |>
+  distinct() |>
+  arrange(Altersgruppe) |>
+  pull(Alter) ->
+  alter_levels
+```
+
+
+```{r}
+sterbedaten_5y_complete |>
+  mutate(Alter=factor(Alter,levels=alter_levels)) ->
+sterbedaten_5y_complete  
+```
+
+
+
+```{r}
+sterbedaten_5y_complete |>
+  group_by(Jahr,Woche,Altersgruppe,Alter) |>
+  summarise(Anzahl=sum(Anzahl)) |>
+  ungroup() ->
+sterbedaten_5y  
+  
+```
+```{r}
+sterbedaten_5y |>
+  filter(Jahr >= 2010) |>
+  mutate(Quartal=pmin(floor((Woche-1)/13),3) |> as.integer()) |>
+  select(Jahr,Woche,Quartal,Altersgruppe,Alter,Anzahl) ->
+  sterb_mit_quartal
+```
+
+
+```{r}
+sterb_mit_quartal |>
+group_by(Jahr,Quartal,Altersgruppe,Alter) |>
+  summarise(Anzahl=sum(Anzahl)) |>
+  ungroup() |>
+  filter(Alter=="5-9") |>
+  mutate(Time=Jahr+Quartal/4) |>
+  ggplot(aes(Time,Anzahl)) +
+  geom_line()
+```
+```{r}
+years_with_53_weeks
+```
+

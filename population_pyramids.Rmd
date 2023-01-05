@@ -172,7 +172,7 @@ gemeinde_age_1y_gender_weekly
 gemeinde_age_1y_gender_weekly |>
   ungroup() |>
   left_join(
-gemeinde_age_1y_gender |>
+gemeinde_age_1y_gender_weekly |>
   select(GKZ,Name) |>
   distinct()) |>
   mutate(Woche=as.integer(Woche)) ->
