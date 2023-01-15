@@ -25,14 +25,23 @@ suppressPackageStartupMessages({
 ```{r}
 read_csv2("https://data.statistik.gv.at/data/OGD_bevjahresanf_PR_BEVJA_4.csv") |>
   mutate(BundeslandID= `C-B00-0` |> str_sub(5,5) |> as.integer()) |>
-  mutate(Jahr = `C-A10-0` |> str_sub(5,8) ) |>
+  mutate(Jahr = `C-A10-0` |> str_sub(5,8) |> as.integer()) |>
   mutate(Alter= (`C-GALTEJ100UA-0` |> str_sub(13,15) |> as.integer()) -1) |>
   mutate(Geschlecht=`C-C11-0` |> str_sub(5,5) |> as.integer() |> (\(x)c("m","w")[x])() ) |>
   mutate(Anzahl = `F-S25V1`) |>
-  select(BundeslandID:Anzahl)
+  select(BundeslandID:Anzahl) ->
+  pop_bl_yearly_1y
 ```
-
 ```{r}
-read_json("https://data.statistik.gv.at/ogd/json?dataset=OGD_bevjahresanf_PR_BEVJA_4")
+pop_bl_yearly_1y |>
+  group_by(Jahr) |>
+  summarise(Anzahl=sum(Anzahl)) |>
+  ungroup() |>
+  ggplot(aes(x=Jahr,y=Anzahl)) +
+  geom_path() +
+  scale_y_continuous(limits=c(0,NA),labels=(\(x)paste(x/1000000,"Mio")),
+                     breaks=seq(0,20000000,2000000)) +
+#  scale_x_continuous(breaks=seq(1900,2100,25)) +
+  theme_minimal()
 ```
 
