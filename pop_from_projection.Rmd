@@ -1,0 +1,38 @@
+---
+title: "Population from projection"
+author: "Erich Neuwirth"
+date: "2023-01-15"
+output: html_document
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+suppressPackageStartupMessages({
+  library(tidyverse)
+  library(fs)
+  library(here)
+  library(lubridate)
+  library(readxl)
+  library(tidyjson)
+})
+```
+
+
+```{r}
+read_csv2("https://data.statistik.gv.at/data/OGD_bevjahresanf_PR_BEVJA_4.csv") |>
+  mutate(BundeslandID= `C-B00-0` |> str_sub(5,5) |> as.integer()) |>
+  mutate(Jahr = `C-A10-0` |> str_sub(5,8) ) |>
+  mutate(Alter= (`C-GALTEJ100UA-0` |> str_sub(13,15) |> as.integer()) -1) |>
+  mutate(Geschlecht=`C-C11-0` |> str_sub(5,5) |> as.integer() |> (\(x)c("m","w")[x])() ) |>
+  mutate(Anzahl = `F-S25V1`) |>
+  select(BundeslandID:Anzahl)
+```
+
+```{r}
+read_json("https://data.statistik.gv.at/ogd/json?dataset=OGD_bevjahresanf_PR_BEVJA_4")
+```
+
