@@ -21,7 +21,7 @@ suppressPackageStartupMessages({
 sheet_names <-
   list_ods_sheets(
     path(here(),"ods_data",
-         "Jaehrliche_Sterbetafeln_1947_bis_2021_fuer_Oesterreich.ods")
+         "Jaehrliche_Sterbetafeln_1947_bis_2022_fuer_Oesterreich.ods")
   )
 
 
@@ -44,9 +44,9 @@ sheet_names |>
      suppressMessages(
        suppressWarnings(read_excel(
        path(here(),"xlsx_data",
-         "Jaehrliche_Sterbetafeln_1947_bis_2021_fuer_Oesterreich.xlsx"),
+         "Jaehrliche_Sterbetafeln_1947_bis_2022_fuer_Oesterreich.xlsx"),
   sheet=x,
-  skip=ifelse(as.integer(x) <= 2001,12,7),
+  skip=ifelse(as.integer(x) <= 2001, 12, 7),
   col_names = FALSE)
   )) |>
     select(1:13) |>
@@ -64,8 +64,8 @@ sheet_names |>
 ```{r}
 life_expectancy_gender |>
   filter(Jahr >= 1970) |>
-  #filter(Alter==0|Alter==20|Alter==60) |>
-  filter(Alter==0|Alter==20) |>
+  filter(Alter==0|Alter==20|Alter==60) |>
+#  filter(Alter==0|Alter==20) |>
   select(Jahr,Alter,e_m,e_w) |>
   rename(Männer=e_m,Frauen=e_w)|>
   pivot_longer(cols=Männer:Frauen,
