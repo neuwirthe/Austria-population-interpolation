@@ -21,6 +21,17 @@ suppressPackageStartupMessages({
 })
 ```
 
+```{r}
+tibble(
+  Datum=as.Date(paste(2000:2025,12,31,sep="-"))
+) |>
+  mutate(Woche=isoweek(Datum)) |>
+  filter(Woche==53) |>
+  pull(Datum) |>
+  year() ->
+  years_with_53_weeks
+```
+
 
 ```{r}
 read_csv2("https://data.statistik.gv.at/data/OGD_bevjahresanf_PR_BEVJA_4.csv") |>
@@ -32,6 +43,21 @@ read_csv2("https://data.statistik.gv.at/data/OGD_bevjahresanf_PR_BEVJA_4.csv") |
   select(BundeslandID:Anzahl) ->
   pop_bl_yearly_1y
 ```
+
+```{r}
+pop_bl_yearly_1y |>
+  tail()
+```
+
+
+```{r}
+pop_bl_yearly_1y |>
+  group_by(Jahr) |>
+  summarise(Anzahl=sum(Anzahl)) |>
+  ungroup() |>
+  filter(Jahr >= 2010 & Jahr <= 2023)
+```
+
 ```{r}
 pop_bl_yearly_1y |>
   group_by(Jahr) |>
@@ -44,4 +70,94 @@ pop_bl_yearly_1y |>
 #  scale_x_continuous(breaks=seq(1900,2100,25)) +
   theme_minimal()
 ```
+
+
+```{r}
+pop_bl_yearly_1y |>
+  filter(Jahr <= 2023) |>
+  group_by(Jahr) |>
+  summarise(Anzahl=sum(Anzahl)) |>
+  ungroup() |>
+  ggplot(aes(x=Jahr,y=Anzahl)) +
+  geom_path() +
+  scale_y_continuous(limits=c(0,NA),labels=(\(x)paste(x/1000000,"Mio")),
+                     breaks=seq(0,20000000,2000000)) +
+#  scale_x_continuous(breaks=seq(1900,2100,25)) +
+  theme_minimal()
+```
+
+```{r}
+pop_bl_yearly_1y |>
+  filter(Jahr <= 2024) |>
+  filter(Jahr >= 2010) |>
+  select(BundeslandID,Jahr,Geschlecht,Alter) |>
+  expand_grid(Woche=1:52) |>
+  left_join(pop_bl_yearly_1y |>
+              mutate(Woche=1)) |>
+  mutate(JahrWoche=Jahr+(Woche-1)/52) |>
+  group_by(BundeslandID,Alter,Geschlecht) |>
+  mutate(pop=
+           approxfun(cur_data() |>
+                       filter(!is.na(Anzahl)) |>
+                       pull(JahrWoche),
+                     cur_data() |>
+                       filter(!is.na(Anzahl)) |>
+                       pull(Anzahl),
+                     rule=2)(JahrWoche)) |>
+  ungroup() ->
+  pop_bl_weekly_1y
+```
+
+
+```{r}
+pop_bl_yearly_1y |>
+  filter(Jahr <= 2024) |>
+  filter(Jahr >= 2000) |>
+  select(BundeslandID,Jahr,Geschlecht,Alter) |>
+  expand_grid(Woche=1:52) |>
+  left_join(pop_bl_yearly_1y |>
+              mutate(Woche=1)) |>
+  mutate(JahrWoche=Jahr+(Woche-1)/52) |>
+  group_by(BundeslandID,Alter,Geschlecht) |>
+  mutate(pop=
+           approxfun(JahrWoche,
+                     Anzahl,
+                     na.rm=TRUE,
+                     rule=2)(JahrWoche)) |>
+  ungroup() |>
+  select(-Anzahl) |>
+  select(-JahrWoche) ->
+  xx
+xx |>
+  bind_rows(
+  xx |>
+  filter(Jahr %in% years_with_53_weeks) |>
+  filter(Woche==52) |>
+  mutate(Woche=53)
+  ) |>
+  select(BundeslandID,Jahr,Woche,Alter,Geschlecht,pop) |>
+  arrange(
+    BundeslandID,Jahr,Woche,Alter,Geschlecht
+  ) ->
+  pop_bl_weekly_1y_gender
+```
+
+```{r}
+save(pop_bl_weekly_1y_gender,
+     file=path(here(),"r_data","pop_bl_weekly_1y_gender.RData"))
+```
+
+```{r}
+pop_bl_yearly_1y |>
+  filter(Jahr==2022) |>
+  group_by(Alter) |>
+  summarise(Anzahl=sum(Anzahl)) |>
+  ungroup() |>
+  mutate(Alter=5*floor(Alter/5) |> as.integer()) |>
+  group_by(Alter) |>
+  summarise(Anzahl=sum(Anzahl)) |>
+  ungroup() |>
+  clipr::write_clip()
+```
+
 

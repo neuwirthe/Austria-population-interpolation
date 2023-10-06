@@ -136,3 +136,80 @@ life_expectancy_gender |>
   mutate_at(vars(e_m,e_w),list(pm=~.-lag(.)))
 ```
   
+```{r}
+read_excel(path(
+  here(),
+  "covid_tote",
+  "CovidFaelle_Altersgruppe.xlsx"
+)) ->
+  covid_alles
+```
+
+```{r}
+covid_alles |>
+  filter(BundeslandID==10) |>
+  select(Time,AltersgruppeID,Altersgruppe,Geschlecht,AnzahlTot) |>
+  mutate(Datum=paste(str_sub(Time,7,10),
+                     str_sub(Time,4,5),
+                     str_sub(Time,1,2),sep="-") |>
+           as.Date()) |>
+  group_by(AltersgruppeID,Altersgruppe,Geschlecht) |>
+  mutate(Tote=AnzahlTot-lag(AnzahlTot)) |>
+  ungroup() |>
+  replace_na(list(Tote=0)) |>
+  select(Datum,everything()) |>
+  select(-Time) |>
+  mutate(Jahr=year(Datum) |> as.integer()) |>
+  select(Datum,Jahr,everything()) ->
+  alle_tot
+```
+
+```{r}
+alle_tot |> 
+  group_by(Jahr) |>
+  summarise(Tote=sum(Tote)) |>
+    ungroup()
+```
+```{r}
+alle_tot |> 
+ select(AltersgruppeID,Altersgruppe) |>
+  distinct() |>
+  arrange(AltersgruppeID) |>
+  bind_cols(
+    Sterbealter=c(2.5,seq(10,80,10),90)
+  ) ->
+  sterbe_alter
+#  mutate(Sterbealter=(AltersgruppeID-1)*5+2.5)
+```
+
+```{r}
+alle_tot |>
+  left_join(sterbe_alter) |>
+  filter(Jahr < 2023) |>
+  filter(AnzahlTot>0) |>
+  group_by(Jahr) |>
+  summarise(Sterbealter=weighted.mean(Sterbealter,AnzahlTot)) ->
+  deaths_covid_alle
+```
+
+
+```{r}
+alle_tot |>
+  left_join(sterbe_alter) |>
+  filter(Jahr < 2023) |>
+  filter(AnzahlTot>0) |>
+  group_by(Jahr,Geschlecht) |>
+  summarise(Sterbealter=weighted.mean(Sterbealter,AnzahlTot)) |>
+  pivot_wider(
+    names_from = Geschlecht,
+    values_from = Sterbealter
+  ) |>
+  ungroup() |>
+  left_join(deaths_covid_alle) |>
+  rename(männlich=2,weiblich=3,zusammen=4) |>
+  gt() |>
+  fmt_number(columns = 2:4,
+             decimals = 1) |>
+  tab_header("Durchschnitt Sterbealter COVID")
+  
+```

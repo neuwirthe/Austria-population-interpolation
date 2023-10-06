@@ -125,4 +125,41 @@ group_by(Jahr,Quartal,Altersgruppe,Alter) |>
 ```{r}
 years_with_53_weeks
 ```
-
+```{r}
+sterbedaten_5y_complete |>
+  filter(Jahr>= 2018) |>
+  group_by(Jahr,Alter,Altersgruppe) |>
+  summarise(Anzahl=sum(Anzahl)) |>
+  ungroup() |>
+  mutate(Sterbealter=(Altersgruppe-1)*5+2.5) |>
+  group_by(Jahr) |>
+  summarise(Sterbealter=weighted.mean(Sterbealter,Anzahl)) |>
+  ungroup() ->
+  alle
+```
+```{r}
+sterbedaten_5y_complete |>
+  filter(Jahr>= 2018) |>
+  filter(Jahr < 2023) |>
+  group_by(Jahr,Geschlecht,Alter,Altersgruppe) |>
+  summarise(Anzahl=sum(Anzahl)) |>
+  ungroup() |>
+  mutate(Sterbealter=(Altersgruppe-1)*5+2.5) |>
+  group_by(Jahr,Geschlecht) |>
+  summarise(Sterbealter=weighted.mean(Sterbealter,Anzahl)) |>
+  ungroup() |>
+  pivot_wider(names_from = Geschlecht,
+              values_from = Sterbealter) |>
+  left_join(alle |>
+              rename(insgesamt=Sterbealter)) |>
+  gt() |>
+  fmt_number(columns = 2:4, decimals=1) |>
+  tab_header("Durchschnitt Sterbealter alle Ursachen")
+```
+```{r}
+sterbedaten_5y_complete |>
+  filter(Jahr>= 2018) |>
+  group_by(Jahr) |>
+  summarise(Anzahl=sum(Anzahl)) |>
+  ungroup()
+```

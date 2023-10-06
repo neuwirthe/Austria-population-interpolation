@@ -1,0 +1,45 @@
+---
+title: "ifg pop"
+author: "Erich Neuwirth"
+date: "2023-10-05"
+output: html_document
+---
+
+```{r}
+suppressPackageStartupMessages({
+  library(tidyverse)
+  library(fs)
+  library(here)
+  library(lubridate)
+  library(readxl)
+  library(gt)
+})
+```
+
+```{r}
+load(path(here(),"r_data","pop_GKZ_age_1y_gender_yearly.RData"))
+```
+```{r}
+pop_GKZ_age_1y_gender_yearly |>
+  filter(Jahr==max(Jahr)) |>
+  group_by(GKZ) |>
+  summarise(pop=sum(pop)) |>
+  ungroup() |>
+  mutate(size=ifelse(pop < 5000,"< 5000 Ew",">= 5000 Ew")) |>
+  group_by(size) |>
+  summarise(n=n(),pop=sum(pop)) |>
+  ungroup() |>
+  mutate(anteil=pop/sum(pop)) |>
+  gt() |>
+  cols_label(
+    size = "Einwohner",
+    n = "Gemeinden",
+    pop = "Einwohner insgesamt",
+    anteil = "Anteil an Gesamtbev."
+  ) |>
+  fmt_percent(columns=4,decimals=1,
+              dec_mark=",") |>
+  fmt_number(columns=2:3,sep_mark = ".",
+             decimals=0)
+```
+

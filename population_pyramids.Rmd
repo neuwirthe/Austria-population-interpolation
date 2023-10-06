@@ -312,3 +312,46 @@ gemeinde_age_1y_gender_weekly |>
   filter(n>1)
 ```
 
+
+
+```{r}
+pop_bl_age_1y_gender_yearly |>
+   select(Jahr,Alter,Geschlecht,pop) |>
+  group_by(Alter,Jahr,Geschlecht) |>
+  summarise(pop=sum(pop)) |>
+  ungroup() |>
+    mutate(Geschlecht=factor(Geschlecht,levels=c("w","m"))) |>
+  filter(Jahr >= 2010) |>
+ggplot( 
+      aes(x = ifelse(Geschlecht == "m", 
+                     yes = -pop, 
+                     no = pop), 
+                     y = Alter, fill = Geschlecht)) +
+  geom_col(width=1.1) +
+  scale_x_symmetric(labels=abs) + #labels = \(x)abs(x/1000)) +
+  scale_y_discrete(breaks=as.character(seq(0,100,by=10))) +
+  labs(x = "Bevölkerung",
+       title="Bevölkerung nach Alter (Stand 2022)",
+       caption="Normiert auf Gesamtbevölkerung 100.000") +
+  facet_wrap(vars(Jahr)) +
+  guides(fill=guide_legend(reverse=TRUE)) +
+  theme_minimal() +
+  theme(legend.position = "bottom",
+        legend.text = element_text(size=5),
+        legend.title = element_text(size=5),
+        legend.key.size = unit(0.3,"cm"),
+        plot.background=element_rect(color="white"),
+        axis.text=element_text(size=4),
+        axis.title=element_text(size=5),
+        strip.text=element_text(size=5),
+        title=element_text(size=6),
+        axis.text.x = element_text(angle=90)
+      ) ->
+  chart_pop_aut
+ggsave("chart_pop_aut.png",
+  chart_pop_aut,
+       width=3,
+       height=4.5)
+
+
+```

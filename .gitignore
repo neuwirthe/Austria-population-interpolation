@@ -6,3 +6,5 @@
 */*.html
 r_data
 r_data/*
+**/.DS_Store
+.DS_Store
