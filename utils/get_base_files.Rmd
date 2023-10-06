@@ -31,10 +31,11 @@ purl_and_source(path(here(),"utils","get_region_names.Rmd"))
 ```
 
 
+
 Read csv files from repository upt to year 2022
 
 ```{r}
-2002:2022 |>
+2002:2023 |>
   map(
   \(i)suppressMessages(
     read_csv2(
