@@ -69,7 +69,7 @@ load(path(save_path,"pop_GKZ_age_1y_gender_yearly.RData"))
 ```{r}
 dates_years_weeks <-
   tibble(
-    Datum=seq(as.Date("2001-12-31"),as.Date("2023-01-01"),by="7 days"),
+    Datum=seq(as.Date("2001-12-31"),as.Date("2024-01-01"),by="7 days"),
     Jahr=isoyear(Datum),
     Woche=isoweek(Datum)
   ) |>
