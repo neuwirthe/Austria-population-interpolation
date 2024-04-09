@@ -55,7 +55,7 @@ pop_bl_yearly_1y |>
   group_by(Jahr) |>
   summarise(Anzahl=sum(Anzahl)) |>
   ungroup() |>
-  filter(Jahr >= 2010 & Jahr <= 2023)
+  filter(Jahr >= 2010 & Jahr <= 2024)
 ```
 
 ```{r}
@@ -161,3 +161,18 @@ pop_bl_yearly_1y |>
 ```
 
 
+```{r}
+pop_bl_weekly_1y_gender |>
+  filter(Woche <= 52 & (Woche %% 13) == 1) |>
+  mutate(Altersgruppe=floor(Alter/5)+1) |>
+  mutate(Quartal=((Woche-1)/13)+1) |>
+  group_by(BundeslandID,Jahr,Quartal,Altersgruppe,Geschlecht) |>
+  summarise(pop=mean(pop)) |>
+  ungroup() ->
+  pop_bl_quart_5y_gender
+```
+
+```{r}
+save(pop_bl_quart_5y_gender,
+     file=path(here(),"r_data","pop_bl_quart_5y_gender.RData"))
+```

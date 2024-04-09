@@ -122,6 +122,7 @@ group_by(Jahr,Quartal,Altersgruppe,Alter) |>
   ggplot(aes(Time,Anzahl)) +
   geom_line()
 ```
+
 ```{r}
 years_with_53_weeks
 ```
@@ -140,7 +141,7 @@ sterbedaten_5y_complete |>
 ```{r}
 sterbedaten_5y_complete |>
   filter(Jahr>= 2018) |>
-  filter(Jahr < 2023) |>
+  filter(Jahr <= 2023) |>
   group_by(Jahr,Geschlecht,Alter,Altersgruppe) |>
   summarise(Anzahl=sum(Anzahl)) |>
   ungroup() |>
@@ -161,5 +162,71 @@ sterbedaten_5y_complete |>
   filter(Jahr>= 2018) |>
   group_by(Jahr) |>
   summarise(Anzahl=sum(Anzahl)) |>
-  ungroup()
+  ungroup() ->
+  sterbe_5y
 ```
+
+
+
+```{r}
+sterbedaten_5y_complete |>
+  filter(Jahr>= 2018)  |>
+  select(Alter) |>
+  unique() |>
+  mutate(Altersgruppe=as.character(Alter))
+```
+```{r}
+sterbedaten_5y_complete |>
+  mutate(Quartal=floor((Woche-1)/13)+1) |>
+  group_by(Jahr,Quartal,Altersgruppe,Alter,Geschlecht,BundeslandID) |>
+  summarise(Tote=sum(Anzahl)) |>
+  ungroup() ->
+  tote_bl_quart_5y_gender
+```
+
+```{r}
+load(path(here(),"r_data","pop_bl_quart_5y_gender.RData"))
+```
+```{r}
+pop_bl_quart_5y_gender |> str()
+tote_bl_quart_5y_gender |> str()
+```
+
+```{r}
+pop_bl_quart_5y_gender |>
+   left_join(tote_bl_quart_5y_gender |>
+               mutate(Geschlecht=str_sub(Geschlecht,1,1))) ->
+  pop_tote_bl_5y_gender
+```
+
+```{r}
+pop_tote_bl_5y_gender |>
+  group_by(Jahr,Quartal,Alter,Altersgruppe,Geschlecht) |>
+  summarise_at(vars(pop,Tote),sum) |>
+  ungroup() |>
+  mutate(death_rate=Tote/pop) ->
+  death_rate
+```
+
+```{r}
+death_rate |>
+  mutate(Geschlecht=factor(Geschlecht,
+                           levels=c("w","m"))) |>
+  filter(!is.na(Alter)) |>
+  filter(Jahr <= 2023) |>
+  filter(Jahr >= 2015) |>
+  filter(Altersgruppe >= 10) |>
+  mutate(Quart=Jahr+(Quartal-1)/3) |>
+  ggplot(aes(x=Quart,y=death_rate,
+             color=Geschlecht)) +
+  geom_line() +
+  coord_cartesian(ylim=c(0,NA)) +
+  facet_wrap(vars(Alter),
+             scales="free_y",
+             ncol=3) +
+  guides(color=guide_legend(reverse=TRUE)) +
+  scale_x_continuous("Jahr",breaks=seq(2016,2025,2)) +
+  scale_y_continuous("Anteil Verstorbener") +
+  theme_minimal()
+```
+
