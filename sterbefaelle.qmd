@@ -212,6 +212,7 @@ pop_tote_bl_5y_gender |>
 death_rate |>
   mutate(Geschlecht=factor(Geschlecht,
                            levels=c("w","m"))) |>
+  mutate(Alter=str_replace(Alter,"95-99","95+")) |>
   filter(!is.na(Alter)) |>
   filter(Jahr <= 2023) |>
   filter(Jahr >= 2015) |>
@@ -226,7 +227,7 @@ death_rate |>
              ncol=3) +
   guides(color=guide_legend(reverse=TRUE)) +
   scale_x_continuous("Jahr",breaks=seq(2016,2025,2)) +
-  scale_y_continuous("Anteil Verstorbener") +
+  scale_y_continuous("Anteil Verstorbener pro Quartal") +
   theme_minimal()
 ```
 
