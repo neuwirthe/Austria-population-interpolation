@@ -18,9 +18,41 @@ suppressPackageStartupMessages({
   library(htmlwidgets)
   library(cowplot)
   library(lubridate)
+  library(ggiraph)
   })
 ```
 
+```{r}
+
+make_chart_html <- function(chart_in, height_factor = 1) {
+  height_svg <- 3.6 * height_factor
+  width_svg <- 6
+  sizing_width <- 0.9
+  hover_inv_opacity <- "opacity:0.25;"  
+  chart <- get("chart_in")
+#  print(class(chart))
+  girafe(
+#    ggobj = chart_in, 
+    ggobj = chart, 
+    width_svg = width_svg, 
+    height_svg = height_svg * height_factor
+  ) -> ggobj
+#  print(ggobj |> str())
+  girafe_options(
+    x = ggobj,
+    opts_zoom(min = 1, max = 3),
+    opts_sizing(width = sizing_width),
+   opts_hover(css = "stroke:dimgrey;stroke-width:2pt;"),
+    opts_hover_inv(css = hover_inv_opacity),
+    opts_tooltip(
+    css = "font-family:sans-serif;color:black;font-size:small;background-color:white;",
+    use_fill = FALSE,
+    offx = -10, offy = -20
+  )
+
+  )
+}
+```
 
 ```{r}
 tibble(Jahr=2000:2023,
@@ -238,5 +270,158 @@ death_rate |>
   scale_x_continuous("Jahr",breaks=seq(2016,2025,2)) +
   scale_y_continuous("Anteil Verstorbener pro Quartal") +
   theme_minimal()
+```
+
+
+```{r}
+pop_tote_bl_5y_gender |>
+  group_by(Jahr,Quartal,Alter,Altersgruppe,Geschlecht) |>
+  summarise_at(vars(pop,Tote),sum) |>
+  ungroup() |>
+  mutate(death_rate=Tote/pop) ->
+  death_rate
+```
+```{r}
+death_rate |>
+  filter(Altersgruppe == 16) |>
+  filter(Geschlecht=="m") |>
+  filter(Jahr >= 2015)
+```
+
+```{r}
+death_rate |>
+  mutate(Geschlecht=factor(Geschlecht,
+                           levels=c("w","m"))) |>
+  mutate(Alter=str_replace(Alter,"95-99","95+")) |>
+  filter(!is.na(Alter)) |>
+  filter(Jahr <= 2023) |>
+  filter(Jahr >= 2015) |>
+  filter(Altersgruppe >= 10) |>
+  mutate(Quart=Jahr+(Quartal-1)/4) |>
+  ggplot(aes(x=Quart,y=death_rate,
+             color=Geschlecht)) +
+  geom_line() +
+  geom_vline(xintercept = 2020,
+             linetype="dashed") +
+  coord_cartesian(ylim=c(0,NA)) +
+  facet_wrap(vars(Alter),
+             scales="free_y",
+             ncol=3) +
+  guides(color=guide_legend(reverse=TRUE)) +
+  scale_x_continuous("Jahr",breaks=seq(2016,2025,2)) +
+  scale_y_continuous("Anteil Verstorbener pro Quartal") +
+  theme_minimal()
+```
+
+
+```{r}
+pop_tote_bl_5y_gender |>
+  group_by(Jahr,Quartal,Alter,Altersgruppe,Geschlecht) |>
+  summarise_at(vars(pop,Tote),sum) |>
+  ungroup() |>
+  mutate(Altersgruppe=as.integer((Altersgruppe))) |>
+  mutate(death_rate=Tote/pop) |>
+  mutate(Quartal=as.integer(Quartal)) |>
+  mutate(Zeitraum=
+           case_when(
+             Jahr <= 2019 ~ "bis 2019",
+             Jahr == 2020 ~ "2020",
+             Jahr >= 2021 ~ "ab 2021"
+           )) |>
+  mutate(Quart=Jahr+(Quartal-1)/4) |> 
+  mutate(Geschlecht=factor(Geschlecht,
+                           levels=c("w","m"))) |>
+  mutate(Alter=str_replace(Alter,"95-99","95+")) |>
+  filter(Jahr <= 2023 | Quartal == 1) ->
+  death_rate
+```
+```{r}
+gg_color_hue <- function(n) {
+hues = seq(15, 375, length = n + 1)
+hcl(h = hues, l = 65, c = 100)[1:n]
+}
+```
+
+```{r}
+pal_alpha <- c("bis 2019"=0.5, "ab 2021"=0.7, "2020" = 1 )
+pal_lw <- c("bis 2019"=0.2, "ab 2021"=0.6, "2020" = 1)
+pal_gender <- gg_color_hue(2)
+names(pal_gender) <- c("w","m")
+```
+
+
+```{r}
+death_rate |>
+#  mutate(Jahr=as.integer(Jahr)) |>
+#  mutate(Geschlecht=factor(Geschlecht,
+#                           levels=c("w","m"))) |>
+#  filter(!is.na(Alter)) |>
+  filter(Jahr <= 2023) |>
+  filter(Jahr >= 2015) |>
+  filter(Altersgruppe == 16) |>
+  filter(Geschlecht == "m") |>
+ggplot(aes(x=Quartal,y=death_rate,
+           color=Geschlecht,
+           group=paste(Jahr,Geschlecht),
+  #         data_id=paste(Jahr,Geschlecht),
+  #         tooltip=paste(Jahr,Geschlecht)
+             )) +
+  geom_line(aes(#alpha=Zeitraum,
+                            linewidth=Zeitraum))+
+#  geom_vline(xintercept = 2020,
+#             linetype="dashed") +
+#  scale_alpha_manual(values=pal_alpha) +
+  scale_linewidth_manual(values=pal_lw) +
+#  coord_cartesian(ylim=c(0,NA)) +
+  facet_wrap(vars(Alter),
+             scales="free_y",
+             ncol=3) +
+  scale_color_manual(values=pal_gender) +
+  guides(color=guide_legend(reverse=TRUE)) +
+#  scale_x_continuous("Jahr",breaks=seq(2016,2025,2)) +
+  scale_y_continuous("Anteil Verstorbener pro Quartal",
+                     label=percent) +
+  theme_minimal() ->
+  chart
+chart |>
+  make_chart_html()
+```
+
+
+
+```{r}
+pal_alpha <- c("bis 2019"=0.5, "ab 2021"=0.7, "2020" = 1 )
+pal_lw <- c("bis 2019"=0.2, "ab 2021"=0.6, "2020" = 1)
+pal_gender <- gg_color_hue(2)
+names(pal_gender) <- c("w","m")
+```
+
+
+```{r, fig.height=10, fig.width=5}
+death_rate |>
+  filter(Jahr <= 2023) |>
+  filter(Jahr >= 2015) |>
+  filter(Altersgruppe >= 13) |>
+  filter(!is.na(Alter)) |>
+#  filter(Geschlecht == "m") |>
+ggplot(aes(x=Quartal,y=death_rate,
+           color=Geschlecht,
+           group=paste(Jahr,Geschlecht)
+             )) +
+  geom_line(aes(#alpha=Zeitraum,
+                linewidth=Zeitraum))+
+  scale_linewidth_manual(values=pal_lw) +
+  coord_cartesian(ylim=c(0,NA)) +
+  facet_wrap(vars(Alter),
+             scales="free_y",
+             ncol=2) +
+  scale_color_manual(values=pal_gender) +
+  guides(color=guide_legend(reverse=TRUE)) +
+#  scale_x_continuous("Jahr",breaks=seq(2016,2025,2)) +
+  scale_y_continuous("Anteil Verstorbener pro Quartal",
+                     label=percent) +
+  theme_minimal() ->
+  chart
+chart
 ```
 
