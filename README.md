@@ -7,3 +7,8 @@ These data are available at the [data repository](https://data.statistik.gv.at/w
 For more detailed analyses, we need weekly interpolated numbers, and this repository contains a toolkit to create these interpolated data sets with R.
 
 
+Additionally, weekly death gaces by 5-year age groups 
+[are available](https://data.statistik.gv.at/data/OGD_gest_kalwo_alter_GEST_KALWOCHE_5J_100.csv).
+
+
+
