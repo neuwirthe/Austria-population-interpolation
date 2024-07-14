@@ -12,31 +12,15 @@ Setting `GKZ_to_use` fo a vector of Gemeindekennzahlen (within this file or in a
 If `GKZ_to_use` is NULL, a complete dataset for all Gemeinden will be produced.       
 If `GKZ_to_use` is undefined, it will be set to NULL.          
 This takes time and memory. I set        
-`R_MAX_VSIZE=128Gb` on a machine with 64Gb of real memory, and it took about 45 minutes.
+`R_MAX_VSIZE=128Gb` on a machine with 64Gb of real memory, and it took about 22 minutes.
 
 
-
-```{r}
-#GKZ_to_use <- c(30603)
-```
 
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-
-```{r}
-if(!exists("GKZ_to_use")) GKZ_to_use <- NULL
-```
-
-```{r}
-# years_with_53_weeks
-```
-
-```{r}
-#GKZ_to_use <- c(30603)
-```
 
 ```{r}
 suppressPackageStartupMessages({
@@ -94,13 +78,13 @@ dates_years_weeks <-
 
 
 ```{r}
-if(is.null(GKZ_to_use)){
+#if(is.null(GKZ_to_use)){
   data_to_use <- pop_GKZ_1y_gender_yearly
-} else {
-  data_to_use <- pop_GKZ_1y_gender_yearly |>
-    filter(GKZ %in% GKZ_to_use)
-}
-rm(pop_GKZ_1y_gender_yearly)
+#} else {
+#  data_to_use <- pop_GKZ_1y_gender_yearly |>
+#    filter(GKZ %in% GKZ_to_use)
+#}
+#rm(pop_GKZ_1y_gender_yearly)
 ```
 
 
@@ -108,18 +92,17 @@ rm(pop_GKZ_1y_gender_yearly)
 ```{r}
 tic()
 expand_grid(
-  datum_jahr_woche(),
+  datum_jahr_woche() |> select(-Quartal,-Wochen_im_Quartal),
   GKZ = data_to_use |>
     pull(GKZ) |> 
     unique() |>
     as.integer() ,
-  Alter= 0:100 |> as.integer(),
+  Alter= 0:100 |> as.integer(), 
   Geschlecht=c("m","w")) |> 
   left_join(data_to_use  |>
               select(-Name) |>
               mutate(Woche=1L)) |>
-  mutate(pop = pop |> as.numeric()) |>
-  left_join(namen_gemeinden) ->
+  mutate(pop = pop |> as.numeric()) ->
   data_incomplete
 rm(data_to_use)
 gc() |> invisible()
@@ -133,16 +116,13 @@ data_incomplete |>
 ```{r}
 save(data_incomplete, 
      file=path(save_path,"data_incomplete.RData"))
-```
-
-
-```{r}
-#rm(tmp_df)
 gc() |> invisible()
 ```
 
 ```{r}
-data_incomplete |> str()
+tic()
+file_size(path(save_path,"data_incomplete.RData"))
+toc()
 ```
 
 -=-=-=-=-=-=-=-=-=-=
@@ -210,30 +190,26 @@ pop_GKZ_1y_gender_weekly |> str()
 ```{r}
 unlink(path(save_path,"data_incomplete.RData"))
 ```
-
 ```{r}
 pop_GKZ_1y_gender_weekly |> 
-  select(-Jahr_Woche,-Quartal,-Wochen_im_Quartal) |>
-  select(Datum:Geschlecht,pop,Name) ->
-  pop_GKZ_1y_gender_weekly
+  select(-Jahr_Woche) ->
+  pop_GKZ_1y_gender_weekly  
 ```
 
 ```{r}
-pop_GKZ_1y_gender_weekly |> str()
-```
-
-```{r}
-if(is_null(GKZ_to_use)){
+tic()
+#if(is_null(GKZ_to_use)){
   save(pop_GKZ_1y_gender_weekly,
        file=path(save_path,"pop_GKZ_1y_gender_weekly.RData"))
-} else {
-  df_name <- paste(c("pop_GKZ_1y_gender_weekly",GKZ_to_use),collapse="_")
-  assign(df_name,pop_GKZ_1y_gender_weekly,
-         envir=.GlobalEnv)
-  save(list=df_name,
-       file=path(save_path,
-                 paste0(df_name,".RData")))
-}
+#} else {
+#  df_name <- paste(c("pop_GKZ_1y_gender_weekly",GKZ_to_use),collapse="_")
+#  assign(df_name,pop_GKZ_1y_gender_weekly,
+#         envir=.GlobalEnv)
+#  save(list=df_name,
+#       file=path(save_path,
+#                 paste0(df_name,".RData")))
+#}
+toc()  
 ```
 
 
