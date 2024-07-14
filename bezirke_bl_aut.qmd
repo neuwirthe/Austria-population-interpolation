@@ -1,0 +1,155 @@
+---
+title: "bezirke_bl_aut"
+format: html
+---
+
+
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+suppressPackageStartupMessages({
+  library(tidyverse)
+  library(fs)
+  library(here)
+  library(lubridate)
+  library(readxl)
+  library(furrr)
+  library(purrr)
+  library(numbers)
+  library(tictoc)
+})
+```
+
+```{r}
+source(path("utils","purl_and_source.R"))
+```
+
+```{r}
+purl_and_source(path("utils","date_utils.Rmd"))
+```
+
+```{r}
+save_path <- path(here(),"r_data")
+```
+
+```{r}
+purl_and_source(path(here(),"utils","get_region_names.Rmd"))
+```
+
+
+```{r}
+load(path(save_path,"pop_GKZ_1y_gender_weekly.RData"))
+```
+
+```{r}
+pop_GKZ_1y_gender_weekly 
+```
+
+
+```{r}
+tic()
+pop_GKZ_1y_gender_weekly |>
+  mutate(BKZ=floor(GKZ/100) |> as.integer()) |>
+  group_by(Datum,Jahr,Woche,BKZ,Alter,Geschlecht) |>
+  summarise(pop=sum(pop)) |>
+  ungroup() |>
+  select(Datum,Jahr,Woche,BKZ,Alter,Geschlecht,pop) ->
+  pop_BKZ_1y_gender_weekly  
+toc()
+```
+
+```{r}
+save(pop_BKZ_1y_gender_weekly,
+    file=path(save_path, "pop_BKZ_1y_gender_weekly.Rdata"))
+```
+
+
+```{r}
+tic()
+pop_BKZ_1y_gender_weekly |>
+  mutate(BundeslandID=floor(BKZ/100) |> as.integer()) |>
+  group_by(Datum,Jahr,Woche,BundeslandID,Alter,Geschlecht) |>
+  summarise(pop=sum(pop)) |>
+  ungroup() |>
+  select(Datum,Jahr,Woche,BundeslandID,Alter,Geschlecht,pop) ->
+  pop_bl_1y_gender_weekly  
+toc()
+```
+```{r}
+pop_bl_1y_gender_weekly  |>
+  bind_rows(
+pop_bl_1y_gender_weekly |>
+  mutate(BundeslandID=10L |> as.integer()) |>
+  group_by(Datum,Jahr,Woche,BundeslandID,Alter,Geschlecht) |>
+  summarise(pop=sum(pop)) |>
+  ungroup() 
+) |>
+  select(Datum,Jahr,Woche,BundeslandID,Alter,Geschlecht,pop) ->
+  pop_aut_bl_1y_gender_weekly  
+```
+
+```{r}
+save(pop_aut_bl_1y_gender_weekly,
+    file=path(save_path, "pop_aut_bl_1y_gender_weekly.Rdata"))
+```
+
+
+```{r}
+tic()
+pop_BKZ_1y_gender_weekly |>
+  mutate(Altersgruppe= floor(Alter/5)+1) |>
+  mutate(Alter=paste((Altersgruppe-1)*5,(Altersgruppe-1)*5+4,sep="-")) |>
+  group_by(Datum,Jahr,Woche,BKZ,Altersgruppe,Alter,Geschlecht) |>
+  summarise(pop=sum(pop)) |>
+  ungroup() |>
+  select(Datum,Jahr,Woche,BKZ,Altersgruppe,Alter,Geschlecht,pop) ->
+  pop_BKZ_5y_gender_weekly  
+toc()
+```
+
+
+```{r}
+save(pop_BKZ_5y_gender_weekly,
+    file=path(save_path, "pop_BKZ_5y_gender_weekly.Rdata"))
+```
+
+```{r}
+tic()
+pop_BKZ_5y_gender_weekly |>
+  mutate(BundeslandID=floor(BKZ/100) |> as.integer()) |>
+  group_by(Datum,Jahr,Woche,BundeslandID,Altersgruppe,Alter,Geschlecht) |>
+  summarise(pop=sum(pop)) |>
+  ungroup() |>
+  select(Datum,Jahr,Woche,BundeslandID,Altersgruppe,Alter,Geschlecht,pop) ->
+  pop_bl_5y_gender_weekly  
+toc()
+```
+
+```{r}
+tic()
+pop_bl_5y_gender_weekly |>
+  bind_rows(
+    pop_bl_5y_gender_weekly |>
+  mutate(BundeslandID=10 |> as.integer()) |>
+  group_by(Datum,Jahr,Woche,BundeslandID,Altersgruppe,Alter,Geschlecht) |>
+  summarise(pop=sum(pop)) |>
+  ungroup() |>
+  select(Datum,Jahr,Woche,BundeslandID,Altersgruppe,Alter,Geschlecht,pop)
+  ) ->
+  pop_aut_bl_5y_gender_weekly  
+toc()
+```
+
+```{r}
+save(pop_aut_bl_5y_gender_weekly,
+    file=path(save_path, "pop_aut_bl_5y_gender_weekly.Rdata"))
+```
+
+
+
+
