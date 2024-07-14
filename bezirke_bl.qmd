@@ -1,0 +1,49 @@
+---
+title: "Bezirke Bl weekly"
+format: html
+---
+
+
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+suppressPackageStartupMessages({
+  library(tidyverse)
+  library(fs)
+  library(here)
+  library(lubridate)
+  library(readxl)
+  library(furrr)
+  library(purrr)
+  library(numbers)
+  library(tictoc)
+})
+```
+
+```{r}
+source(path("utils","purl_and_source.R"))
+```
+
+```{r}
+purl_and_source(path("utils","date_utils.Rmd"))
+```
+
+```{r}
+save_path <- path(here(),"r_data")
+```
+
+```{r}
+purl_and_source(path(here(),"utils","get_region_names.Rmd"))
+```
+
+
+```{r}
+load(path(save_path,"pop_GKZ_1y_gender_weekly.RData"))
+```
+
+

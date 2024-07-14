@@ -1,8 +1,8 @@
-## ----setup, include=FALSE---------------------------------------------------------------
+## ----setup, include=FALSE---------------------------------------------------------------------------
 knitr::opts_chunk$set(echo = TRUE)
 
 
-## ---------------------------------------------------------------------------------------
+## ---------------------------------------------------------------------------------------------------
 suppressPackageStartupMessages({
   library(tidyverse)
   library(fs)
@@ -12,7 +12,7 @@ suppressPackageStartupMessages({
 })
 
 
-## ---------------------------------------------------------------------------------------
+## ---------------------------------------------------------------------------------------------------
 tmpdir <- tempdir()
 download.file("https://www.statistik.at/verzeichnis/reglisten/gemliste_knz.xls",
               path(tmpdir,"gemliste_knz.xls"),
@@ -26,7 +26,7 @@ read_excel(path(tmpdir,"gemliste_knz.xls"),skip=3) |>
   namen_gemeinden
 
 
-## ---------------------------------------------------------------------------------------
+## ---------------------------------------------------------------------------------------------------
 download.file("https://www.statistik.at/verzeichnis/reglisten/polbezirke.xls",
               path(tmpdir,"polbezirke.xls"),
               quiet=TRUE)

@@ -35,6 +35,11 @@ load(path(here(),"r_data",
 ```
 
 ```{r}
+pop_aut_bl_weekly |> 
+  tail()
+```
+
+```{r}
 pop_aut_bl_weekly |>
   mutate(Quartal=quarter(Datum)) |>
   mutate(start_date=quarter(Datum,type="date_first")) |>
@@ -47,5 +52,24 @@ pop_aut_bl_weekly |>
 ```{r}
 save(pop_aut_bl_quarter,
      file=path(save_path,"pop_aut_bl_quarter.RData"))
+```
+
+```{r}
+load(file=path(save_path,"pop_aut_bl_age_5y_gender_weekly.RData"))
+```
+```{r}
+pop_aut_bl_age_5y_gender_weekly |>
+  tail()
+```
+
+```{r}
+pop_aut_bl_age_5y_gender_weekly |>
+  mutate(Quartal=quarter(Datum)) |>
+  mutate(start_date=quarter(Datum,type="date_first")) |>
+  group_by(Quartal,start_date,BundeslandID,Altersgruppe,Geschlecht) |>
+  summarise(pop=mean(pop)) ->
+  pop_bl_quart_5y_gender
+save(pop_bl_quart_5y_gender,
+     file=path(save_path,"pop_bl_quart_5y_gender.RData"))
 ```
 

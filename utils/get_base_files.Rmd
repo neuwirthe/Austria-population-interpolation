@@ -1,5 +1,5 @@
 ---
-title: "get base files"
+title: "get base pop files"
 output: html_document
 date: '2022-06-02'
 ---
@@ -32,10 +32,10 @@ purl_and_source(path(here(),"utils","get_region_names.Rmd"))
 
 
 
-Read csv files from repository upt to year 2022
+Read csv files from repository upt to year 2024
 
 ```{r}
-2002:2023 |>
+2002:2024 |>
   map(
   \(i)suppressMessages(
     read_csv2(
@@ -56,8 +56,10 @@ Read csv files from repository upt to year 2022
                    (\(x)(x-1)*5)(),
                  str_sub(Alter_prov,11,13) |>
                    as.integer() |>
-                   (\(x)x-1)())) |>
-    mutate(GKZ=str_sub(`C-GRGEMAKT-0`,10,14) |> as.integer()) |>
+                   (\(x)x-1)()) |>
+    as.integer()
+    ) |>
+  mutate(GKZ=str_sub(`C-GRGEMAKT-0`,10,14) |> as.integer()) |>
   mutate(Geschlecht=str_sub(`C-C11-0`,5,5)) |>
   mutate(Geschlecht=ifelse(Geschlecht==1,"m","w")) |>
   mutate(GKZ=str_sub(`C-GRGEMAKT-0`,10,14) |> as.integer()) |>
@@ -77,15 +79,15 @@ expand_grid(
   left_join(pop_GKZ_age_1y_gender_yearly) |>
   replace_na(list(pop=0)) |>
   left_join(namen_gemeinden) ->
-  pop_GKZ_age_1y_gender_yearly    
+  pop_GKZ_1y_gender_yearly    
 ```
 
 
 Save yearly data for communities (Gemeinden)
 
 ```{r}
-save(pop_GKZ_age_1y_gender_yearly,
+save(pop_GKZ_1y_gender_yearly,
      file=path(save_path,
-               "pop_GKZ_age_1y_gender_yearly.RData"))
+               "pop_GKZ_1y_gender_yearly.RData"))
 ```
 

@@ -6,10 +6,11 @@ date: "`r Sys.Date()`"
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+options(scipen=999)
 ```
 
 ```{r}
-do_download <- FALSE
+# do_download <- FALSE
 ```
 
 
@@ -49,6 +50,9 @@ purl_and_source(path(here(),"utils","get_base_files.Rmd"))
 ```{r}
 load(path(save_path,"pop_GKZ_age_1y_gender_yearly.RData"))
 ```
+```{r}
+pop_GKZ_age_1y_gender_yearly |> tail()
+```
 
 Yearly data for districts (Bezirke)
 
@@ -79,7 +83,7 @@ save(pop_BKZ_age_1y_gender_yearly,
 ```{r}
 dates_years_weeks <-
   tibble(
-    Datum=seq(as.Date("2001-12-31"),as.Date("2023-01-01"),by="7 days"),
+    Datum=seq(as.Date("2001-12-31"),as.Date("2025-01-01"),by="7 days"),
     Jahr=isoyear(Datum),
     Woche=isoweek(Datum)
   ) |>
@@ -105,14 +109,18 @@ expand_grid(
   left_join(namen_bezirke |> select(BKZ,Name)) |>
   left_join(dates_years_weeks) |>
   group_by(BKZ,Alter,Geschlecht) |>
-  mutate(pop_new=approxfun(cur_data() |> 
-                             filter(!is.na(pop)) |> 
-                             pull(Jahr_Woche),
-                           cur_data() |> 
-                             filter(!is.na(pop)) |> 
-                             pull(pop),
-                           rule=2)(Jahr_Woche)
-         ) |>
+#  mutate(pop_new=approxfun(cur_data() |> 
+#                             filter(!is.na(pop)) |> 
+#                             pull(Jahr_Woche),
+#                           cur_data() |> 
+#                             filter(!is.na(pop)) |> 
+#                             pull(pop),
+#                           rule=2)(Jahr_Woche)
+#         ) |>
+  mutate(pop_new = approxfun(Jahr_Woche[!is.na(pop)],
+                             pop[!is.na(pop)],
+                             rule = 2)(Jahr_Woche)) |>
+  
   ungroup() |>
   select(-pop) |>
   rename(pop=pop_new) |>
@@ -218,3 +226,17 @@ save(pop_aut_bl_weekly,
      file=path(save_path,
                "pop_aut_bl_weekly.Rdata"))
 ```
+
+
+```{r}
+pop_aut_bl_weekly |>
+  filter(BundeslandID==10) |>
+  select(Datum,pop) |>
+  ggplot(aes(x=Datum,y=pop)) +
+  geom_line() +
+  scale_y_continuous("population",limits=c(0,NA),
+                     breaks=seq(0,10000000,by=1000000),
+                     labels=\(x)paste(floor(x/1000000),"Mio")) +
+  theme_minimal()
+```
+

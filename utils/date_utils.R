@@ -1,0 +1,33 @@
+## ----setup, include=FALSE---------------------------------------------------------------------------
+knitr::opts_chunk$set(echo = TRUE)
+
+
+## ---------------------------------------------------------------------------------------------------
+suppressPackageStartupMessages({
+  library(tidyverse)
+  library(lubridate)
+  library(here)
+  library(fs)
+})
+
+
+## ---------------------------------------------------------------------------------------------------
+datum_jahr_woche <- function()
+  tibble(Datum=seq(as.Date("2000-01-03"),as.Date("2025-12-31"),by=7),
+         Jahr=isoyear(Datum),
+         Woche=isoweek(Datum),
+         Quartal= pmin((floor((Woche-1)/13)+1),4) |> as.integer()
+  ) |>
+  group_by(Jahr,Quartal) |>
+  mutate(Wochen_im_Quartal=n()) |>
+  ungroup() |>
+  group_by(Jahr) |>
+  mutate(Jahr_Woche=Jahr+(Woche-1)/n()) |>
+  ungroup() |>
+  mutate_at(vars(Jahr,Woche), as.integer) |>
+  select(Datum,Jahr,Woche,Jahr_Woche,Quartal,Wochen_im_Quartal)
+
+
+## ---------------------------------------------------------------------------------------------------
+ datum_jahr_woche() 
+
