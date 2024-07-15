@@ -61,21 +61,6 @@ load(path(save_path,"pop_GKZ_1y_gender_yearly.RData"))
 pop_GKZ_1y_gender_yearly |> str()
 ```
 
-```{}
-dates_years_weeks <-
-  tibble(
-    Datum=seq(as.Date("2001-12-31"),as.Date("2025-01-01"),by="7 days"),
-    Jahr=isoyear(Datum),
-    Woche=isoweek(Datum)
-  ) |>
-  group_by(Jahr) |>
-  mutate(total_weeks=max(Woche)) |>
-  ungroup() |>
-  mutate(Jahr_Woche=Jahr+(Woche-1)/total_weeks) |>
-  select(-total_weeks) |>
-  mutate_at(vars(Jahr,Woche),as.integer)
-```
-
 
 ```{r}
 #if(is.null(GKZ_to_use)){
@@ -135,13 +120,11 @@ Here the loop starts
 
 
 ```{r}
-print("start interpolation parallel")
+print("start interpolation multisession")
 ```
 
 ```{r}
-#plan(sequential)
 plan(multisession, workers = 8)
-#plan(multicore, workers = 8)
 
 bl_num <- 1:9
 pop_GKZ_1y_gender_weekly <-
@@ -225,4 +208,155 @@ tic()
 #                 paste0(df_name,".RData")))
 #}
 toc()  
+```
+
+```{r}
+rm(pop_GKZ_1y_gender_weekly)
+rm(pop_GKZ_1y_gender_yearly)
+rm(xxx)
+gc() |> invisible()
+gc() |> invisible()
+```
+```{r}
+print("start interpolation multicore")
+```
+
+```{r}
+plan(multicore, workers = 8)
+
+bl_num <- 1:9
+pop_GKZ_1y_gender_weekly <-
+  tibble()
+
+load(path(save_path, "data_incomplete.RData"))
+
+#bl_num <- 1
+tic()
+for (bl in bl_num) {
+  data_incomplete |>
+    filter((floor(GKZ / 10000) |> as.integer()) == bl) ->
+    filtered_df
+  if(nrow(filtered_df) == 0) next
+    filtered_df |>  
+    split(~ GKZ + Alter + Geschlecht) -> xxx
+
+#  rm(data_incomplete)
+  gc() |> invisible()
+  gc() |> invisible()
+
+  xxx |>
+    future_map_dfr(
+      \(x)
+        mutate(x,
+          pop_new = approxfun(
+            x |>
+              filter(!is.na(pop)) |>
+              pull(Jahr_Woche),
+            x |> filter(!is.na(pop)) |>
+              pull(pop),
+            rule = 2
+          )(Jahr_Woche)
+        ) |>
+          select(-pop) |>
+          rename(pop = pop_new),
+        .progress=TRUE
+    ) ->
+  yyy
+  rm(filtered_df)
+  gc() |> invisible()
+  gc() |> invisible()
+  bind_rows(
+    pop_GKZ_1y_gender_weekly,
+    yyy
+  ) |>
+  select(-Jahr_Woche) ->
+  pop_GKZ_1y_gender_weekly
+  rm(yyy)
+
+  gc() |> invisible()
+  gc() |> invisible()
+  
+  paste("Bundesland", bl, "finished") |> print()
+
+}
+toc()
+beepr::beep(8)
+```
+``
+
+```{r}
+rm(pop_GKZ_1y_gender_weekly)
+rm(pop_GKZ_1y_gender_yearly)
+rm(xxx)
+gc() |> invisible()
+gc() |> invisible()
+```
+
+```{r}
+print("start interpolation sequential")
+```
+```{r}
+plan(sequential)
+```
+
+```{r}
+#plan(multisession, workers = 8)
+
+bl_num <- 1:9
+pop_GKZ_1y_gender_weekly <-
+  tibble()
+
+
+#bl_num <- 1
+load(path(save_path, "data_incomplete.RData"))
+tic()
+for (bl in bl_num) {
+  data_incomplete |>
+    filter((floor(GKZ / 10000) |> as.integer()) == bl) ->
+    filtered_df
+  if(nrow(filtered_df) == 0) next
+    filtered_df |>  
+    split(~ GKZ + Alter + Geschlecht) -> xxx
+
+#  rm(data_incomplete)
+  gc() |> invisible()
+  gc() |> invisible()
+
+  xxx |>
+    map_dfr(
+      \(x)
+        mutate(x,
+          pop_new = approxfun(
+            x |>
+              filter(!is.na(pop)) |>
+              pull(Jahr_Woche),
+            x |> filter(!is.na(pop)) |>
+              pull(pop),
+            rule = 2
+          )(Jahr_Woche)
+        ) |>
+          select(-pop) |>
+          rename(pop = pop_new),
+        .progress=TRUE
+    ) ->
+  yyy
+  rm(filtered_df)
+  gc() |> invisible()
+  gc() |> invisible()
+  bind_rows(
+    pop_GKZ_1y_gender_weekly,
+    yyy
+  ) ->
+  pop_GKZ_1y_gender_weekly
+  rm(yyy)
+  gc() |> invisible()
+  gc() |> invisible()
+  paste("Bundesland", bl, "finished") |> print()
+}
+toc()
+beepr:beep(8)
+```
+
+```{r}
+# unlink(path(save_path,"data_incomplete.RData"))
 ```
