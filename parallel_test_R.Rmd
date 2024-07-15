@@ -45,11 +45,15 @@ purl_and_source(path("utils","date_utils.Rmd"))
 ```
 
 ```{r}
+purl_and_source(path("utils","date_utils.Rmd"))
+```
+
+```{r}
 save_path <- path(here(),"r_data")
 ```
 
 ```{r}
-purl_and_source(path(here(),"utils","get_region_names.Rmd"))
+#purl_and_source(path(here(),"utils","get_region_names.Rmd"))
 ```
 
 
@@ -297,7 +301,7 @@ print("start interpolation sequential")
 ```
 ```{r}
 plan(sequential)
-```
+```   
 
 ```{r}
 #plan(multisession, workers = 8)
