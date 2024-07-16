@@ -21,6 +21,7 @@ datum_jahr_woche <- function()
   group_by(Jahr,Quartal) |>
   mutate(Wochen_im_Quartal=n()) |>
   ungroup() |>
+  mutate(quart_corr=52/Wochen_im_Quartal) |>
   group_by(Jahr) |>
   mutate(Jahr_Woche=Jahr+(Woche-1)/n()) |>
   ungroup() |>

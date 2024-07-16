@@ -100,7 +100,7 @@ sterb_raw_5y %>%
         # Alter,
          Geschlecht,BundeslandID,Anzahl) ->
  sterbedaten_5y_tmp
- sterbedaten_5y_tmp
+ sterbedaten_5y_tmp |>
 ```
 
 ```{r}
@@ -147,28 +147,14 @@ with(sterbedaten_5y_tmp,
 ```
 
 ```{r}
-load(path(here(), "r_data", "pop_aut_bl_age_5y_gender_weekly.RData"))
-pop_aut_bl_age_5y_gender_weekly |>
-  tail()
+load(path(here(), "r_data", "pop_aut_bl_5y_gender_weekly.RData"))
 ```
 
-```{r}
-pop_aut_bl_age_5y_gender_weekly |>
-mutate(Altersgruppe=pmin(Altersgruppe+1,20) |> as.integer()) |>
-  mutate_at(vars(Jahr,Woche,BundeslandID,Altersgruppe), as.integer) |>
-  group_by(Jahr,Woche,Datum,BundeslandID,Altersgruppe,Geschlecht) |>
-  summarise(pop=sum(pop)) |>
-  ungroup() ->
-  pop_aut_bl_complete
-  pop_aut_bl_complete |> tail()
-
-```
 
 
 ```{r}
 sterbedaten_5y_complete |>
-  filter(Jahr >= 2002) |>
-  left_join(pop_aut_bl_complete) ->
+  inner_join(pop_aut_bl_5y_gender_weekly) ->
   pop_death_aut_bl_complete
 ```
 
@@ -179,18 +165,154 @@ pop_death_aut_bl_complete |>
 
 
 ```{r}
-sterbedaten_5y_complete |>
+pop_death_aut_bl_complete |>
   select(-Datum) |>
   group_by(Jahr,Woche) |>
   summarise(Anzahl=sum(Anzahl)) |>
   ungroup() |>
-  left_join(datum_jahr_woche) |>
+  left_join(datum_jahr_woche()) |>
   filter(Jahr >= 2018) |>
   ggplot(aes(x=Datum,y=Anzahl)) +
   geom_line() +
   scale_y_continuous("Todesfälle pro Woche",limits=c(0,NA)) +
   theme_minimal()
 ```
+
+
+
+
+```{r}
+pop_death_aut_bl_complete |> 
+ left_join(
+pop_death_aut_bl_complete |>
+  filter(Jahr==2024 & Woche == 1) |>
+  select(BundeslandID,Altersgruppe,Alter,Geschlecht,pop) |>
+  rename(pop_2024=pop)
+) |>
+  mutate(Anzahl_2024=pop_2024*Anzahl/pop) ->
+pop_death_aut_bl_complete
+```
+
+```{r}
+pop_death_aut_bl_complete |>
+  select(-Datum) |>
+  group_by(Jahr,Woche) |>
+  summarise(Anzahl_2024=sum(Anzahl_2024),
+            Anzahl=sum(Anzahl),
+            pop=sum(pop),
+            pop_2024=sum(pop_2024)) |>
+  ungroup() |>
+#  mutate(Anzahl=100000*Anzahl/pop) |>
+#  mutate(Anzahl_2024=100000*Anzahl_2024/pop_2024) |>
+  left_join(datum_jahr_woche()) |>
+  filter(Jahr >= 2018) |>
+  select(Datum,Anzahl,Anzahl_2024) |>
+  pivot_longer(cols = starts_with("Anzahl"),
+               names_to="Alterstruktur",
+               values_to = "Verstorbene") |>
+  mutate(Altersstruktur=ifelse(Alterstruktur=="Anzahl_2024",
+                               "von 2024", "laufend")) |>
+  ggplot(aes(x=Datum,y=Verstorbene,color=Altersstruktur)) +
+  geom_line() +
+  scale_y_continuous("Todesfälle pro Woche",limits=c(0,NA)) +
+  scale_x_date(date_breaks = "1 year", label=year) +
+  theme_minimal()
+```
+
+
+
+```{r}
+pop_death_aut_bl_complete |>
+  select(-Datum) |>
+  group_by(Jahr,Woche) |>
+  summarise(Anzahl_2024=sum(Anzahl_2024),
+            Anzahl=sum(Anzahl),
+            pop=sum(pop),
+            pop_2024=sum(pop_2024)) |>
+  ungroup() |>
+  mutate(Anzahl=100000*Anzahl/pop) |>
+  mutate(Anzahl_2024=100000*Anzahl_2024/pop_2024) |>
+  left_join(datum_jahr_woche()) |>
+  filter(Jahr >= 2018) |>
+  select(Datum,Anzahl,Anzahl_2024) |>
+  pivot_longer(cols = starts_with("Anzahl"),
+               names_to="Alterstruktur",
+               values_to = "Verstorbene") |>
+  mutate(Altersstruktur=ifelse(Alterstruktur=="Anzahl_2024",
+                               "von 2024", "laufend")) |>
+  ggplot(aes(x=Datum,y=Verstorbene,color=Altersstruktur)) +
+  geom_line() +
+  scale_y_continuous("Todesfälle pro Woche pro 100.000 EW",limits=c(0,NA)) +
+  scale_x_date(date_breaks = "1 year", label=year) +
+  theme_minimal()
+```
+
+
+
+```{r}
+pop_death_aut_bl_complete |>
+  select(-Datum) |>
+  group_by(Jahr,Woche) |>
+  summarise(Anzahl_2024=sum(Anzahl_2024),
+            Anzahl=sum(Anzahl)) |>
+  ungroup() |>
+  left_join(datum_jahr_woche()) |>
+  filter(Jahr >= 2018) |>
+  select(Datum,Anzahl,Anzahl_2024) |>
+  pivot_longer(cols = starts_with("Anzahl"),
+               names_to="Alterstruktur",
+               values_to = "Verstorbene") |>
+  mutate(Altersstruktur=ifelse(Alterstruktur=="Anzahl_2024",
+                               "von 2024", "laufend")) |>
+  ggplot(aes(x=Datum,y=Verstorbene,color=Altersstruktur)) +
+  geom_line() +
+  scale_y_continuous("Todesfälle pro Woche",limits=c(0,NA)) +
+  scale_x_date(date_breaks = "1 year", label=year) +
+  theme_minimal()
+```
+
+
+
+```{r}
+#! fig.height: 8
+(pop_death_aut_bl_complete |>
+  select(-Datum) |>
+  group_by(Jahr,Woche,BundeslandID) |>
+  summarise(Anzahl_2024=sum(Anzahl_2024),
+            Anzahl=sum(Anzahl),
+            pop=sum(pop),
+            pop_2024=sum(pop_2024)) |>
+  ungroup() |>
+  mutate(Anzahl=100000*Anzahl/pop) |>
+  mutate(Anzahl_2024=100000*Anzahl_2024/pop_2024) |>
+  
+  left_join(datum_jahr_woche()) |>
+  filter(Jahr >= 2018) |>
+  select(Datum,Anzahl,Anzahl_2024,BundeslandID) |>
+  left_join(namen_bl) |>
+  pivot_longer(cols = starts_with("Anzahl"),
+               names_to="Alterstruktur",
+               values_to = "Verstorbene") |>
+  mutate(Altersstruktur=ifelse(Alterstruktur=="Anzahl_2024",
+                               "von 2024", "laufend")) |>
+  ggplot(aes(x=Datum,y=Verstorbene,color=Altersstruktur)) +
+  geom_line() +
+  facet_wrap(vars(Bundesland),ncol=2) +
+  scale_y_continuous("Todesfälle pro Woche pro 100.000 EW",limits=c(0,NA)) +
+  scale_x_date(date_breaks = "1 year", label=year) +
+  theme_minimal() +
+  theme(legend.position = "bottom")) |>
+   make_chart_html(height_factor = 1.4) -> xxx
+xxx
+saveWidget(xxx,"xxx.html")
+```
+
+```{r}
+pop_death_aut_bl_complete |>
+  pull(Datum) |>
+  max()
+```
+
 
 ```{r}
 sterbedaten_5y_complete |>

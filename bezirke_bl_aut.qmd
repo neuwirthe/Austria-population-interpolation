@@ -102,8 +102,9 @@ save(pop_aut_bl_1y_gender_weekly,
 ```{r}
 tic()
 pop_BKZ_1y_gender_weekly |>
-  mutate(Altersgruppe= floor(Alter/5)+1) |>
+  mutate(Altersgruppe= pmin(floor(Alter/5)+1,20)) |>
   mutate(Alter=paste((Altersgruppe-1)*5,(Altersgruppe-1)*5+4,sep="-")) |>
+  mutate(Alter=ifelse(Altersgruppe==20,"95+",Alter)) |>
   group_by(Datum,Jahr,Woche,BKZ,Altersgruppe,Alter,Geschlecht) |>
   summarise(pop=sum(pop)) |>
   ungroup() |>
@@ -112,6 +113,11 @@ pop_BKZ_1y_gender_weekly |>
 toc()
 ```
 
+```{r}
+  pop_BKZ_5y_gender_weekly  |>
+  select(Altersgruppe,Alter) |> 
+  distinct()
+```
 
 ```{r}
 save(pop_BKZ_5y_gender_weekly,
@@ -152,4 +158,34 @@ save(pop_aut_bl_5y_gender_weekly,
 
 
 
+```{r}
+pop_BKZ_5y_gender_weekly |>
+  left_join(datum_jahr_woche() |> 
+              select(Jahr,Woche,Quartal)) |>
+  group_by(Jahr,Quartal,BKZ,Altersgruppe,Alter,Geschlecht) |>
+  summarise(pop=mean(pop)) |>
+  ungroup() ->
+  pop_BKZ_5y_gender_quarterly
+```
+
+```{r}
+pop_BKZ_5y_gender_quarterly |>
+  save(file=path(save_path,"pop_BKZ_5y_gender_quarterly.RData"))
+```
+
+
+```{r}
+pop_aut_bl_5y_gender_weekly |>
+  left_join(datum_jahr_woche() |> 
+              select(Jahr,Woche,Quartal)) |>
+  group_by(Jahr,Quartal,BundeslandID,Altersgruppe,Alter,Geschlecht) |>
+  summarise(pop=mean(pop)) |>
+  ungroup() ->
+  pop_aut_bl_5y_gender_quarterly
+```
+
+```{r}
+pop_aut_bl_5y_gender_quarterly |>
+  save(file=path(save_path,"pop_aut_bl_5y_gender_quarterly.RData"))
+```
 
