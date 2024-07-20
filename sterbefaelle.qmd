@@ -55,6 +55,19 @@ make_chart_html <- function(chart_in, height_factor = 1) {
 ```
 
 ```{r}
+file_exists(path(here(),"utils","date_utils.R")) |> print()
+```
+
+```{r}
+source(path(here(),"utils","date_utils.R"))
+```
+
+
+```{r}
+source(path(here(),"utils","get_region_names.R"))
+```
+
+```{r}
 tibble(Jahr=2000:2024,
   date=paste0(Jahr,"-12-31") |>
          as.Date(),
@@ -64,7 +77,7 @@ tibble(Jahr=2000:2024,
   years_with_53_weeks
 ```
 
-```{r}
+```{}
 tibble(
 Datum = seq(as.Date("2000-01-03"),as.Date("2025-01-01"),by=7) ,
 Jahr=isoyear(Datum) |> as.integer(),
@@ -91,16 +104,17 @@ sterb_raw_5y %>%
 #  mutate(Alter=ifelse(str_sub(`C-ALTERGR65-0`,12,12)==1,"<65","65+")) %>%
   mutate(Altersgruppe=str_sub(`C-ALTER5-0`,8,9) |> as.integer()) %>%
   mutate(Alter=paste((Altersgruppe-1)*5,(Altersgruppe-1)*5+4,sep="-")) %>%
+  mutate(Alter=ifelse(Altersgruppe==20,"95+",Alter)) |>
     mutate(BundeslandID=str_sub(`C-B00-0`,5,5) |> as.integer()) %>%
   mutate(Geschlecht=ifelse(str_sub(`C-C11-0`,5,5)==1,"m","w")) %>%
   mutate(Anzahl=`F-ANZ-1`) %>%
-  left_join(datum_jahr_woche) %>%
+  left_join(datum_jahr_woche()) %>%
   select(Jahr,Woche,Datum,
          Altersgruppe,
         # Alter,
          Geschlecht,BundeslandID,Anzahl) ->
  sterbedaten_5y_tmp
- sterbedaten_5y_tmp |>
+ sterbedaten_5y_tmp |> tail()
 ```
 
 ```{r}
@@ -114,7 +128,8 @@ sterbedaten_5y_tmp |>
   max() ->
   last_week
 ```
-```{r}
+
+```{}
 datum_jahr_woche |> 
          filter((Jahr < last_year) | (Woche <= last_week & Jahr == last_year)) ->
   datum_jahr_woche
@@ -126,28 +141,48 @@ with(sterbedaten_5y_tmp,
      expand_grid(
 #       Jahr = Jahr %>% unique(),
 #       Woche = Woche %>% unique(),
-       datum_jahr_woche |>
+       datum_jahr_woche() |>
          filter(Jahr < last_year | (Woche <= last_week & Jahr==last_year)),
        Altersgruppe = Altersgruppe %>% unique(),
        Geschlecht=Geschlecht %>% unique(),
        BundeslandID=BundeslandID %>% unique()
-     ) ) |> 
+#     ) 
+) ) |> 
   arrange(Jahr,Woche,Altersgruppe) %>%
   filter(Woche <= 52 |  Jahr %in% years_with_53_weeks) |>
   filter(Jahr < last_year | Woche <= last_week) |>
   left_join(sterbedaten_5y_tmp) |>
   replace_na(list(Anzahl=0)) |>
   mutate(Alter=paste((Altersgruppe-1)*5,(Altersgruppe-1)*5+4,sep="-")) %>%
+  mutate(Alter=ifelse(Altersgruppe==20,"95+",Alter)) |>
   select(-Datum) %>%
-  left_join(datum_jahr_woche) %>% 
+  left_join(datum_jahr_woche()) %>% 
   select(Jahr,Woche,Datum,BundeslandID,Altersgruppe,Alter,everything()) ->
   sterbedaten_5y_complete
-  sterbedaten_5y_complete |> tail()
+#  sterbedaten_5y_complete |> tail()
+```
 
+```{r}
+sterbedaten_5y_complete |>
+  pull(Datum) |>
+  max() |>
+  (\(x)x+6)()
+```
+
+
+```{r}
+sterbedaten_5y_complete |>
+  select(Altersgruppe,Alter) |>
+  distinct()
 ```
 
 ```{r}
 load(path(here(), "r_data", "pop_aut_bl_5y_gender_weekly.RData"))
+```
+```{r}
+pop_aut_bl_5y_gender_weekly |>
+  select(Alter,Altersgruppe) |>
+  distinct()
 ```
 
 
@@ -249,7 +284,7 @@ pop_death_aut_bl_complete |>
 
 
 
-```{r}
+```{}
 pop_death_aut_bl_complete |>
   select(-Datum) |>
   group_by(Jahr,Woche) |>
@@ -305,6 +340,49 @@ pop_death_aut_bl_complete |>
    make_chart_html(height_factor = 1.4) -> xxx
 xxx
 saveWidget(xxx,"xxx.html")
+```
+
+```{r}
+pop_aut_bl_5y_gender_weekly |>
+  filter(Jahr==2018) |>
+  filter(Woche==min(Woche)) |>
+  select(BundeslandID,Altersgruppe,Alter,Geschlecht,pop) |>
+  rename(pop_2018=pop) ->
+  pop_2018
+  
+```
+
+```{r}
+pop_death_aut_bl_complete |>
+  left_join(pop_2018) |>
+  filter(Jahr >= 2018) |>
+  filter(Jahr < 2018 | Woche == 1) |>
+#  select(-Datum) |>
+  group_by(Datum,Jahr,Woche,BundeslandID) |>
+  summarise(#Anzahl_2018=sum(Anzahl_2018),
+#            Anzahl=sum(Anzahl),
+            pop=sum(pop),
+            pop_2018=sum(pop_2018)) |>
+  ungroup() |>
+  left_join(namen_bl) |>
+  mutate(pop_quot=pop/pop_2018) ->
+  in_data
+in_data |>
+  filter(Datum==max(Datum)) |>
+    select(Bundesland,pop_quot) |>
+    arrange(desc(pop_quot)) |>
+    pull(Bundesland) ->
+    bl_levels
+  in_data |>
+  filter(Jahr < 2018 | Woche == 1) |>
+    mutate(Bundesland=factor(Bundesland,levels=bl_levels)) |>
+  select(Datum,Bundesland,pop_quot,
+         ) |>
+  ggplot(aes(x=Datum,y=pop_quot,color=Bundesland,
+             )) +
+  geom_line() +
+    scale_y_continuous("Bevölkerungsveränderung",label=\(x)paste0("+",percent(x-1))) +
+    theme_minimal()
 ```
 
 ```{r}
@@ -423,11 +501,11 @@ sterbedaten_5y_complete |>
 ```
 
 ```{r}
-load(path(here(),"r_data","pop_bl_quart_5y_gender.RData"))
+load(path(here(),"r_data","pop_aut_bl_5y_gender_quarterly.RData"))
 ```
 
 ```{r}
-pop_bl_quart_5y_gender |> tail()
+pop_aut_bl_5y_gender_quarterly |> tail()
 ```
 
 
@@ -438,8 +516,8 @@ pop_bl_quart_5y_gender |> tail()
 
 
 ```{r}
-pop_bl_quart_5y_gender |>
-   left_join(tote_bl_quart_5y_gender |>
+pop_aut_bl_5y_gender_quarterly |>
+   inner_join(tote_bl_quart_5y_gender |>
                mutate(Geschlecht=str_sub(Geschlecht,1,1))) ->
   pop_tote_bl_5y_gender
 ```
@@ -636,5 +714,278 @@ ggplot(aes(x=Quartal,y=death_rate,
   theme_minimal() ->
   chart
 chart
+```
+
+
+
+
+
+```{r}
+pop_death_aut_bl_complete |>
+  filter(Jahr >= 2018) |>
+  mutate(Alter_65 = ifelse(Altersgruppe <= 13,"<65","65+")) |>
+  filter(Alter_65 == "65+") |>
+  group_by(Jahr,Woche,Datum,Alter_65,Geschlecht) |>
+  summarise(pop=sum(pop),            
+            Anzahl=sum(Anzahl)) |>
+  ungroup() |>
+  mutate(death_rate=100000*Anzahl/pop) |>
+  ggplot(aes(x=Datum,y=death_rate,color=Geschlecht)) +
+  geom_line() +
+  scale_color_manual(values=pal_gender) +
+  scale_y_continuous("Verstorbene pro 100.000 EW pro Woche",limits=c(0,NA)) +
+#  facet_wrap(vars(Alter_65),ncol=1,
+#             scales="free_y") +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+```
+
+
+```{r}
+pop_death_aut_bl_complete |>
+  filter(Jahr >= 2018) |>
+#  mutate(Alter_65 = ifelse(Altersgruppe <= 13,"<65","65+")) |>
+#  filter(Alter_65 == "65+") |>
+  select(Alter,Altersgruppe) |>
+  distinct()
+```
+
+
+```{r}
+pop_death_aut_bl_complete |>
+  filter(Jahr >= 2018) |>
+  mutate(Alter_65 = ifelse(Altersgruppe <= 13,"<65","65+")) |>
+  filter(Alter_65 == "65+") |>
+  group_by(Jahr,Woche,Datum,Altersgruppe,Alter,Geschlecht) |>
+  summarise(pop=sum(pop),            
+            Anzahl=sum(Anzahl)) |>
+  ungroup() |>
+  mutate(death_rate=100000*Anzahl/pop) |>
+  ggplot(aes(x=Datum,y=death_rate,color=Geschlecht)) +
+  geom_line() +
+  scale_color_manual(values=pal_gender) +
+  scale_y_continuous("Verstorbene pro 100.000 EW pro Woche",limits=c(0,NA)) +
+  facet_wrap(vars(Alter),ncol=1,
+             scales="free_y"
+             ) +
+  theme_minimal() +
+  theme(legend.position = "bottom") ->
+  xxx
+make_chart_html(xxx,
+                height_factor = 1.5) -> yyy
+yyy
+saveWidget(yyy,
+           file="death_by_age.html"
+)
+```
+
+
+
+
+
+
+```{r}
+pop_death_aut_bl_complete |>
+  filter(Jahr >= 2018) |>
+  mutate(Alter_65 = ifelse(Altersgruppe <= 13,"<65","65+")) |>
+  filter(Alter_65 == "65+") |>
+  mutate(Anzahl_65=100000*Anzahl*pop_2024/pop) |>
+  group_by(Jahr,Woche,Datum,Alter_65,Geschlecht) |>
+  summarise(pop=sum(pop_2024),            
+            Anzahl=sum(Anzahl_65)) |>
+  ungroup() |>
+  mutate(death_rate=100000*Anzahl/pop) |>
+  ggplot(aes(x=Datum,y=death_rate,color=Geschlecht)) +
+  geom_line() +
+  scale_color_manual(values=pal_gender) +
+  scale_y_continuous("Verstorbene pro 100.000 EW pro Woche",limits=c(0,NA)) +
+#  facet_wrap(vars(Alter_65),ncol=1,
+#             scales="free_y") +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+```
+
+
+
+```{r}
+pop_death_aut_bl_complete |>
+  filter(Jahr >= 2018) |>
+  mutate(Alter_65 = ifelse(Altersgruppe <= 13,"<65","65+")) |>
+  group_by(Datum,Geschlecht,Alter_65) |>
+  summarise(pop=sum(pop)) |>
+  ungroup() |>
+  group_by(Datum,Geschlecht) |>
+  mutate(Anteil=pop/sum(pop)) |>
+  ungroup() |>
+  filter(Alter_65 == "65+") |>
+  ggplot(aes(x=Datum,y=Anteil,color=Geschlecht)) +
+  geom_line() +
+  scale_y_continuous("Anteil Altersgruppe 65+",
+                     label=percent,
+                     limits=c(0,NA)) +
+  scale_color_manual(values=pal_gender) +
+  guides(color=guide_legend(reverse=TRUE)) + 
+  theme_minimal()
+```
+
+```{r}
+pop_death_aut_bl_complete |>
+  filter(Jahr >= 2018) |>
+  mutate(Alter_65 = ifelse(Altersgruppe <= 13,"<65","65+")) |>
+  filter(Alter_65 == "65+") |>
+  group_by(Jahr,Woche,Datum,BundeslandID,Alter_65,Geschlecht) |>
+  summarise(pop=sum(pop),            
+            Anzahl=sum(Anzahl)) |>
+  ungroup() |>
+  mutate(death_rate=100000*Anzahl/pop) |>
+  left_join(namen_bl) |>
+  ggplot(aes(x=Datum,y=death_rate,color=Geschlecht)) +
+  geom_line() +
+  scale_color_manual(values=pal_gender) +
+  scale_y_continuous("Verstorbene pro 100.000 EW pro Woche, Altersgruppe 65+",limits=c(0,NA)) +
+#  facet_wrap(vars(Alter_65),ncol=1,
+#             scales="free_y") +
+  facet_wrap(vars(Bundesland),ncol=2) +
+  geom_hline(yintercept = 100, linewidth=0.1) +
+  theme_minimal() +
+  theme(legend.position = "bottom") ->
+  xxx
+xxx |>
+  make_chart_html(
+    height_factor = 1.5) ->
+  yyy
+yyy
+saveWidget(yyy,file="bl.html")
+```
+
+
+```{r}
+pop_death_aut_bl_complete |>
+  filter(Jahr >= 2018) |>
+  mutate(Alter_65 = ifelse(Altersgruppe <= 13,"<65","65+")) |>
+  group_by(Jahr,Woche,Datum,Alter_65,Geschlecht) |>
+  summarise(pop=sum(pop),            
+            Anzahl=sum(Anzahl)) |>
+  ungroup() |>
+  mutate(death_rate=100000*Anzahl/pop) |>
+  ggplot(aes(x=Datum,y=death_rate,color=Geschlecht)) +
+  geom_line() +
+  scale_color_manual(values=pal_gender) +
+  scale_y_continuous("Verstorbene pro 100.000 EW pro Woche",limits=c(0,NA)) +
+  facet_wrap(vars(Alter_65),ncol=1,
+             scales="free_y") +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+```
+
+
+
+```{r}
+pop_death_aut_bl_complete |>
+  filter(Jahr >= 2018) |>
+  mutate(Alter_65 = ifelse(Altersgruppe <= 13,"<65","65+")) |>
+  group_by(Jahr,Woche,Datum,Alter_65,Geschlecht) |>
+  summarise(pop=sum(pop),            
+            Anzahl=sum(Anzahl)) |>
+  ungroup() |> 
+  mutate(death_rate=10000*Anzahl/pop) |>
+  select(Datum,Geschlecht,Alter_65,death_rate) |>
+  pivot_wider(names_from = Geschlecht,
+              values_from = death_rate) |>
+  mutate(quot=w/m) |>
+  ggplot(aes(x=Datum,y=quot)) +
+  geom_line() +
+  facet_wrap(vars(Alter_65),ncol=1)
+```
+
+
+```{r}
+pop_death_aut_bl_complete |>
+  filter(Jahr >= 2018) |>
+  mutate(Alter_65 = ifelse(Altersgruppe <= 13,"<65","65+")) |>
+  group_by(Jahr,Woche,Datum,Alter_65,Geschlecht) |>
+  summarise(pop=sum(pop),            
+            Anzahl=sum(Anzahl)) |>
+  ungroup() |> 
+  filter(Alter_65=="65+") |>
+  mutate(death_rate=10000*Anzahl/pop) |>
+  select(Datum,Geschlecht,Alter_65,death_rate) |>
+  pivot_wider(names_from = Geschlecht,
+              values_from = death_rate) |>
+  mutate(quot=w/m) |>
+  filter(between(year(Datum),2022,2023)) |>
+  select(Datum,w,m,quot)  
+#  ggplot(aes(x=Datum,y=quot)) +
+#  geom_line() +
+#  facet_wrap(vars(Alter_65),ncol=1)
+```
+
+
+
+```{r}
+pop_death_aut_bl_complete |>
+  filter(Jahr >= 2018) |>
+  filter(Jahr < 2024 | Woche == 1) |>
+  mutate(Alter_65 = ifelse(Altersgruppe <= 13,"<65","65+")) |>
+  group_by(Jahr,Woche,Datum,Alter_65,Geschlecht) |>
+  summarise(pop=sum(pop),            
+            Anzahl=sum(Anzahl)) |>
+  ungroup() |>
+  select(Datum,Geschlecht,Alter_65,pop) |>
+  pivot_wider(names_from=Alter_65,
+              values_from=pop) |>
+  mutate(Anteil=`65+`/(`65+`+`<65`)) |>
+  ggplot(aes(x=Datum,y=Anteil,color=Geschlecht)) +
+  geom_line() +
+  scale_y_continuous("Anteil 65+",limits=c(0,NA),labels=percent) +
+  scale_color_manual(values=pal_gender) +
+  theme_minimal() +
+  guides(color=guide_legend(reverse=TRUE))
+  
+```
+
+
+```{r}
+pop_death_aut_bl_complete |>
+  filter(Jahr >= 2018) |>
+  filter(Jahr < 2024 | Woche == 1) |>
+  mutate(Alter_65 = ifelse(Altersgruppe <= 13,"<65","65+")) |>
+  group_by(Jahr,Woche,Datum,BundeslandID,Alter_65,Geschlecht) |>
+  summarise(pop=sum(pop),            
+            Anzahl=sum(Anzahl)) |>
+  ungroup() |>
+  select(Datum,BundeslandID,Geschlecht,Alter_65,pop) |>
+  pivot_wider(names_from=Alter_65,
+              values_from=pop) |>
+  mutate(Anteil=`65+`/(`65+`+`<65`)) |>
+  left_join(namen_bl) |>
+  ggplot(aes(x=Datum,y=Anteil,color=Geschlecht)) +
+  geom_line() +
+  scale_y_continuous("Anteil 65+",limits=c(0,NA),labels=percent) +
+  facet_wrap(vars(Bundesland)) + 
+  scale_color_manual(values=pal_gender) +
+  theme_minimal() +
+  guides(color=guide_legend(reverse=TRUE))
+  
+```
+
+```{r}
+pop_death_aut_bl_complete |>
+  filter(Jahr >= 2018) |>
+  filter(Jahr < 2024 | Woche == 1) |>
+  mutate(Alter_65 = ifelse(Altersgruppe <= 13,"<65","65+")) |>
+  group_by(Jahr,Woche,Datum,BundeslandID) |>
+  summarise(pop=sum(pop),            
+            Anzahl=sum(Anzahl)) |>
+  ungroup() |>
+  select(Datum,BundeslandID,pop) |>
+  group_by(Datum) |>
+  mutate(Anteil=pop/sum(pop)) |>
+  ungroup() |>
+  ggplot(aes(x=Datum,y=Anteil)) +
+  geom_line() +
+  scale_y_continuous(limits=c(0,NA)) +
+  facet_wrap(vars(BundeslandID),
+             scales = "free_y")
 ```
 

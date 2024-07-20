@@ -12,7 +12,7 @@ suppressPackageStartupMessages({
 
 
 ## ---------------------------------------------------------------------------------------------------
-datum_jahr_woche <- function()
+datum_jahr_woche <- function(){
   tibble(Datum=seq(as.Date("2000-01-03"),as.Date("2025-12-31"),by=7),
          Jahr=isoyear(Datum),
          Woche=isoweek(Datum),
@@ -27,7 +27,7 @@ datum_jahr_woche <- function()
   ungroup() |>
   mutate_at(vars(Jahr,Woche), as.integer) |>
   select(Datum,Jahr,Woche,Jahr_Woche,Quartal,Wochen_im_Quartal)
-
+}
 
 ## ---------------------------------------------------------------------------------------------------
  datum_jahr_woche() 
