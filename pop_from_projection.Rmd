@@ -57,6 +57,13 @@ pop_bl_yearly_1y |>
   ungroup() |>
   filter(Jahr >= 2010 & Jahr <= 2024)
 ```
+```{r}
+pop_bl_yearly_1y |>
+  filter(Jahr==2025) |>
+  group_by(Alter, Geschlecht) |>
+  summarise_at(vars(Anzahl),sum) |>
+  clipr::write_clip()
+```
 
 ```{r}
 pop_bl_yearly_1y |>
