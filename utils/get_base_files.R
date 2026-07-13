@@ -1,14 +1,8 @@
----
-title: "get base pop files"
-output: html_document
-date: '2022-06-02'
----
-
-```{r setup, include=FALSE}
+## ----setup, include=FALSE--------------------------------------------------------
 knitr::opts_chunk$set(echo = TRUE)
-```
 
-```{r}
+
+## --------------------------------------------------------------------------------
 suppressPackageStartupMessages({
   library(tidyverse)
   library(fs)
@@ -16,28 +10,22 @@ suppressPackageStartupMessages({
   library(lubridate)
   library(readxl)
 })
-```
 
-```{r}
+
+## --------------------------------------------------------------------------------
 curr_year <- year(Sys.Date())
-```
 
 
-```{r}
+## --------------------------------------------------------------------------------
 save_path <- path(here(),"r_data")
-```
 
 
-```{r}
+## --------------------------------------------------------------------------------
 source(path(here(),"utils","purl_and_source.R"))
 purl_and_source(path(here(),"utils","get_region_names.Rmd"))
-```
 
 
-
-Read csv files from repository upt to current year
-
-```{r}
+## --------------------------------------------------------------------------------
 2002:curr_year |>
   map(
   \(i)suppressMessages(
@@ -69,10 +57,9 @@ Read csv files from repository upt to current year
   mutate(pop=`F-ISIS-1` |> as.integer()) |>
   select(Jahr,GKZ,Alter,Geschlecht,pop) ->
   pop_GKZ_age_1y_gender_yearly
-```
 
 
-```{r}
+## --------------------------------------------------------------------------------
 expand_grid(
   Jahr = pop_GKZ_age_1y_gender_yearly |> pull(Jahr) |> unique(),
   GKZ = pop_GKZ_age_1y_gender_yearly |> pull(GKZ) |> unique(),
@@ -83,14 +70,10 @@ expand_grid(
   replace_na(list(pop=0)) |>
   left_join(namen_gemeinden) ->
   pop_GKZ_1y_gender_yearly    
-```
 
 
-Save yearly data for communities (Gemeinden)
-
-```{r}
+## --------------------------------------------------------------------------------
 save(pop_GKZ_1y_gender_yearly,
      file=path(save_path,
                "pop_GKZ_1y_gender_yearly.RData"))
-```
 

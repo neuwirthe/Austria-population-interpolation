@@ -13,7 +13,7 @@ suppressPackageStartupMessages({
 
 ## ---------------------------------------------------------------------------------------------------
 datum_jahr_woche <- function(){
-  tibble(Datum=seq(as.Date("2000-01-03"),as.Date("2025-12-31"),by=7),
+  tibble(Datum=seq(as.Date("2000-01-03"),Sys.Date(),by=7),
          Jahr=isoyear(Datum),
          Woche=isoweek(Datum),
          Quartal= pmin((floor((Woche-1)/13)+1),4) |> as.integer()

@@ -10,7 +10,7 @@ options(scipen=999)
 ```
 
 ```{r}
-# do_download <- FALSE
+do_download <- FALSE
 ```
 
 
@@ -22,6 +22,11 @@ suppressPackageStartupMessages({
   library(lubridate)
   library(readxl)
 })
+```
+
+```{r}
+today <- Sys.Date()
+curr_year <- year(today)
 ```
 
 ```{r}
@@ -44,38 +49,36 @@ purl_and_source(path(here(),"utils","get_region_names.Rmd"))
 ```{r}
 if(do_download){
 purl_and_source(path(here(),"utils","get_base_files.Rmd"))
-}
+} 
 ```
 
+
 ```{r}
-load(path(save_path,"pop_GKZ_age_1y_gender_yearly.RData"))
-```
-```{r}
-pop_GKZ_age_1y_gender_yearly |> tail()
+load(path(save_path,"pop_GKZ_1y_gender_yearly.RData"))
 ```
 
 Yearly data for districts (Bezirke)
 
 ```{r}
-pop_GKZ_age_1y_gender_yearly |>
+pop_GKZ_1y_gender_yearly |>
   mutate(BKZ=floor(GKZ/100) |> as.integer()) |>
   group_by(Jahr,BKZ,Alter,Geschlecht) |>
   summarise(pop=sum(pop)) |>
   ungroup() ->
-  pop_BKZ_age_1y_gender_yearly
+  pop_BKZ_1y_gender_yearly
 ```
 
 ```{r}
-pop_BKZ_age_1y_gender_yearly |>
+pop_BKZ_1y_gender_yearly |>
   left_join(namen_bezirke |>
               select(BKZ,Name)) ->
-  pop_BKZ_age_1y_gender_yearly
+  pop_BKZ_1y_gender_yearly
 ```
 
 ```{r}
-save(pop_BKZ_age_1y_gender_yearly,
+save(pop_BKZ_1y_gender_yearly,
      file=path(here(),"r_data",
-               "pop_BKZ_age_1y_gender_yearly.RData"))  
+               "pop_BKZ_1y_gender_yearly.RData"))  
 ```
 
 
@@ -83,7 +86,7 @@ save(pop_BKZ_age_1y_gender_yearly,
 ```{r}
 dates_years_weeks <-
   tibble(
-    Datum=seq(as.Date("2001-12-31"),as.Date("2025-01-01"),by="7 days"),
+    Datum=seq(as.Date("2001-12-31"),today,by="7 days"),
     Jahr=isoyear(Datum),
     Woche=isoweek(Datum)
   ) |>
@@ -94,16 +97,19 @@ dates_years_weeks <-
   select(-total_weeks) |>
   mutate_at(vars(Jahr,Woche),as.integer)
 ```
+```{r}
+dates_years_weeks |> tail()
+```
 
 ```{r}
 expand_grid(
   dates_years_weeks,
-  BKZ = pop_BKZ_age_1y_gender_yearly |>
+  BKZ = pop_BKZ_1y_gender_yearly |>
     pull(BKZ) |> unique(),
-  Alter=pop_BKZ_age_1y_gender_yearly |>
+  Alter=pop_BKZ_1y_gender_yearly |>
     pull(Alter) |> unique(),
   Geschlecht=c("m","w")) |> 
-  left_join(pop_BKZ_age_1y_gender_yearly |>
+  left_join(pop_BKZ_1y_gender_yearly |>
               select(-Name) |>
               mutate(Woche=1)) |>
   left_join(namen_bezirke |> select(BKZ,Name)) |>
@@ -125,80 +131,80 @@ expand_grid(
   select(-pop) |>
   rename(pop=pop_new) |>
   select(-Jahr_Woche) ->
-  pop_BKZ_age_1y_gender_weekly
+  pop_BKZ_1y_gender_weekly
 ```
 
 
 
 
 ```{r}
-save(pop_BKZ_age_1y_gender_weekly,
+save(pop_BKZ_1y_gender_weekly,
      file=path(save_path,
-               "pop_BKZ_age_1y_gender_weekly.Rdata"))
+               "pop_BKZ_1y_gender_weekly.Rdata"))
 ```
 
 
 
 ```{r}
-pop_BKZ_age_1y_gender_weekly |> 
+pop_BKZ_1y_gender_weekly |> 
   mutate(BundeslandID=floor(BKZ/100) |> as.integer()) |>
   group_by(Jahr,Woche,Datum,BundeslandID,Alter,Geschlecht) |>
   summarise(pop=sum(pop)) |>
   ungroup() ->
-  pop_bl_age_1y_gender_weekly   
+  pop_bl_1y_gender_weekly   
 ```
 
 ```{r}
-pop_bl_age_1y_gender_weekly |> 
+pop_bl_1y_gender_weekly |> 
   mutate(BundeslandID=10) |>
   group_by(Jahr,Woche,Datum,BundeslandID,Alter,Geschlecht) |>
   summarise(pop=sum(pop)) |>
   ungroup() ->
-  pop_aut_age_1y_gender_weekly 
+  pop_aut_1y_gender_weekly 
 ```
 
 ```{r}
-pop_bl_age_1y_gender_weekly |>
+pop_bl_1y_gender_weekly |>
   bind_rows(
-  pop_aut_age_1y_gender_weekly 
+  pop_aut_1y_gender_weekly 
   ) -> 
-  pop_aut_bl_age_1y_gender_weekly  
+  pop_aut_bl_1y_gender_weekly  
 ```
 
 
 ```{r}
-  pop_aut_bl_age_1y_gender_weekly  |>
+  pop_aut_bl_1y_gender_weekly  |>
   left_join(namen_bl) ->
-  pop_aut_bl_age_1y_gender_weekly
+  pop_aut_bl_1y_gender_weekly
 ```
 
 ```{r}
-save(pop_aut_bl_age_1y_gender_weekly,
+save(pop_aut_bl_1y_gender_weekly,
      file=path(save_path,
-               "pop_aut_bl_age_1y_gender_weekly.Rdata"))
+               "pop_aut_bl_1y_gender_weekly.Rdata"))
 ```
 
 
 
 ```{r}
-pop_aut_bl_age_1y_gender_weekly |>
+pop_aut_bl_1y_gender_weekly |>
   mutate(Altersgruppe=floor((Alter-1)/5)+1) |>
   group_by(Jahr,Woche,Datum,BundeslandID,Altersgruppe,Geschlecht) |>
   summarise(pop=sum(pop)) |>
   ungroup() ->
-pop_aut_bl_age_5y_gender_weekly  
+pop_aut_bl_5y_gender_weekly  
 ```
 
 ```{r}
-save(pop_aut_bl_age_5y_gender_weekly,
+save(pop_aut_bl_5y_gender_weekly,
      file=path(save_path,
-               "pop_aut_bl_age_5y_gender_weekly.Rdata"))
+               "pop_aut_bl_5y_gender_weekly.Rdata"))
 ```
 
 
 
 ```{r}
-pop_aut_bl_age_1y_gender_weekly |>
+pop_aut_bl_1y_gender_weekly |>
   group_by(Jahr,Woche,Datum,BundeslandID,Bundesland,Geschlecht) |>
   summarise(pop=sum(pop)) |>
   ungroup() ->
