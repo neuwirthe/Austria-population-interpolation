@@ -29,6 +29,10 @@ curr_year <- year(today)
 ```
 
 ```{r}
+save_path <- path(here(),"r_data")
+```
+
+```{r}
 
 make_chart_html <- function(chart_in, height_factor = 1) {
   height_svg <- 3.6 * height_factor
@@ -96,6 +100,7 @@ datum_jahr_woche |>
   years_with_53_weeks
 ```
 
+## read data
 
 ```{r}
 sterb_raw_5y <-
@@ -134,7 +139,7 @@ sterb_raw_5y %>%
 ```
 ```{r}
     sterbedaten_5y_tmp |>
-  str()
+  tail()
 ```
 
 ```{r}
@@ -239,6 +244,9 @@ sterbedaten_5y_complete |>
   pop_death_aut_bl_complete |>
   save(file=path(save_path,"pop_death_aut_bl_complete.RData"))
 ```
+
+
+## data saved
 
 ```{r}
 pop_death_aut_bl_complete |>
@@ -507,7 +515,7 @@ sterbedaten_5y_complete |>
 ```{r}
 sterbedaten_5y_complete |>
   filter(Jahr>= 2018) |>
-  filter(Jahr <= 2024) |>
+  filter(Jahr <= curr_year) |>
   group_by(Jahr,Geschlecht,Alter,Altersgruppe) |>
   summarise(Anzahl=sum(Anzahl)) |>
   ungroup() |>
@@ -740,7 +748,7 @@ names(pal_gender) <- c("w","m")
 
 ```{r, fig.height=10, fig.width=5}
 death_rate |>
-  filter(Jahr <= 2024) |>
+  filter(Jahr <= curr_year) |>
   filter(Jahr >= 2015) |>
   filter(Altersgruppe >= 13) |>
   filter(!is.na(Alter)) |>
@@ -839,7 +847,7 @@ pop_death_aut_bl_complete |>
   filter(Jahr >= 2018) |>
   mutate(Alter_65 = ifelse(Altersgruppe <= 13,"<65","65+")) |>
   filter(Alter_65 == "65+") |>
-  mutate(Anzahl_65=100000*Anzahl*pop_2024/pop) |>
+  mutate(Anzahl_65=100000*Anzahl*pop2024/pop) |>
   group_by(Jahr,Woche,Datum,Alter_65,Geschlecht) |>
   summarise(pop=sum(pop_2024),            
             Anzahl=sum(Anzahl_65)) |>
@@ -1037,5 +1045,17 @@ pop_death_aut_bl_complete |>
   scale_y_continuous(limits=c(0,NA)) +
   facet_wrap(vars(BundeslandID),
              scales = "free_y")
+```
+
+
+
+## ohne Alter
+
+
+```{r}
+tote_gesamt <- read_csv2("https://data.statistik.gv.at/data/OGD_gestorbene_ext_GES_1.csv")
+```
+```{r}
+tote_gesamt
 ```
 

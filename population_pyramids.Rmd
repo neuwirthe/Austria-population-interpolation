@@ -44,29 +44,29 @@ purl_and_source(path("utils/get_base_files.Rmd"))
 ```{r}
 load(
   path(save_path,
-  "pop_GKZ_age_1y_gender_yearly.RData"))
+  "pop_GKZ_1y_gender_yearly.RData"))
 ```
 
 
 ```{r}
-pop_GKZ_age_1y_gender_yearly |>
+pop_GKZ_1y_gender_yearly |>
   filter(GKZ==gemeinde_nr) ->
-  gemeinde_age_1y_gender_yearly
+  gemeinde_1y_gender_yearly
 ```
 
 
 ```{r}
-pop_GKZ_age_1y_gender_yearly |>
+pop_GKZ_1y_gender_yearly |>
   mutate(BundeslandID=floor(GKZ/10000)) |>
   group_by(Jahr,BundeslandID,Alter,Geschlecht) |>
   summarise(pop=sum(pop)) |>
   ungroup() ->
-  pop_bl_age_1y_gender_yearly
+  pop_bl_1y_gender_yearly
 ```
 
 
 ```{r}
-paste(2002:2023,"12","31",sep="-") |>
+paste(2002:2026,"12","31",sep="-") |>
   as.Date() |>
   keep(\(x)isoweek(x)==53) |>
   year() ->
@@ -77,11 +77,11 @@ paste(2002:2023,"12","31",sep="-") |>
 
 ```{r}
 expand_grid(
-  Jahr= 2002:2022,
+  Jahr= 2002:2026,
   Woche=1:52,
-  GKZ = gemeinde_age_1y_gender_yearly |>
+  GKZ = gemeinde_1y_gender_yearly |>
     pull(GKZ) |> unique(),
-  Alter=gemeinde_age_1y_gender_yearly |>
+  Alter=gemeinde_1y_gender_yearly |>
     pull(Alter) |> unique(),
   Geschlecht=c("m","w")) |>
   mutate(Jahr_Woche=Jahr+(Woche-1)/52) |>
@@ -93,14 +93,14 @@ expand_grid(
 
 ```{r}
 expand_grid(
-  Jahr= 2002:2022,
+  Jahr= 2002:2026,
   Woche=1:52,
-  GKZ = gemeinde_age_1y_gender_yearly |>
+  GKZ = gemeinde_1y_gender_yearly |>
     pull(GKZ) |> unique(),
-  Alter=gemeinde_age_1y_gender_yearly |>
+  Alter=gemeinde_1y_gender_yearly |>
     pull(Alter) |> unique(),
   Geschlecht=c("m","w")) |>
-  left_join(gemeinde_age_1y_gender_yearly) |>
+  left_join(gemeinde_1y_gender_yearly) |>
   replace_na(list(pop=0)) |>
   mutate(pop=ifelse(Woche==1,pop,NA)) ->
   interpolation_BKZ_base
@@ -126,15 +126,15 @@ interpolation_BKZ_input |>
   rename(pop=pop_new) |>
   select(Jahr,Woche,Jahr_Woche,everything()) |>
   select(-Jahr_Woche) ->
-  gemeinde_age_1y_gender_weekly
+  gemeinde_1y_gender_weekly
 ```
 
 
 
 ```{r}
-gemeinde_age_1y_gender_weekly |>
+gemeinde_1y_gender_weekly |>
   bind_rows(
-    gemeinde_age_1y_gender_weekly |>
+    gemeinde_1y_gender_weekly |>
     filter(Woche==1) |>
   mutate(Jahr=Jahr-1,
          Woche=53) |>
@@ -143,7 +143,7 @@ gemeinde_age_1y_gender_weekly |>
              Woche < 53)
   ) |>
   arrange(Jahr,Woche,GKZ,Alter,Geschlecht) ->
-gemeinde_age_1y_gender_weekly   
+gemeinde_1y_gender_weekly   
 ```
 
 
@@ -162,17 +162,17 @@ date_year_week <-
 
 
 ```{r}
-gemeinde_age_1y_gender_weekly |>
+gemeinde_1y_gender_weekly |>
   left_join(date_year_week) |>
   select(Jahr,Woche,Datum,everything()) ->
-gemeinde_age_1y_gender_weekly  
+gemeinde_1y_gender_weekly  
 ```
 
 ```{r}
-gemeinde_age_1y_gender_weekly |>
+gemeinde_1y_gender_weekly |>
   ungroup() |>
   left_join(
-gemeinde_age_1y_gender_weekly |>
+gemeinde_1y_gender_weekly |>
   select(GKZ,Name) |>
   distinct()) |>
   mutate(Woche=as.integer(Woche)) ->
@@ -180,7 +180,7 @@ gemeinde_age_1y_gender_weekly |>
 ```
 
 ```{r}
-gemeinde_age_1y_gender_weekly |>
+gemeinde_1y_gender_weekly |>
   mutate(Alter=factor(as.character(Alter),
                       levels=as.character(0:99))) |>
   mutate(Geschlecht=factor(Geschlecht,levels=c("w","m"))) |>
@@ -205,7 +205,7 @@ source(path("utils","get_region_names.R"))
 ```
 
 ```{r}
-pop_bl_age_1y_gender_yearly |>
+pop_bl_1y_gender_yearly |>
   group_by(BundeslandID,Jahr) |>
   summarise(pop_tot=sum(pop)) |>
   ungroup() ->
@@ -214,14 +214,14 @@ pop_bl_age_1y_gender_yearly |>
 
 
 ```{r}
-pop_bl_age_1y_gender_yearly |>
+pop_bl_1y_gender_yearly |>
   left_join(pop_bl_tot_yearly) |>
   mutate(pop_normed=pop/pop_tot*100000) ->
-pop_bl_age_1y_gender_yearly  
+pop_bl_1y_gender_yearly  
 ```
 
 ```{r}
-pop_bl_age_1y_gender_yearly |>
+pop_bl_1y_gender_yearly |>
   left_join(namen_bl) |>
   filter(Jahr==max(Jahr)) |>
   mutate(Alter=factor(as.character(Alter),
@@ -249,8 +249,13 @@ ggplot(
         title=element_text(size=6)
       ) ->
   chart_pops
-ggsave("chart_pops.png",
+```
+
+
+```{r}
+ggsave(filename="chart_pops.png",
   chart_pops,
+  device=png(),
        width=3,
        height=4.5)
 ```
@@ -258,7 +263,7 @@ ggsave("chart_pops.png",
 
 
 ```{r}
-pop_bl_age_1y_gender_yearly |>
+pop_bl_1y_gender_yearly |>
   left_join(namen_bl) |>
   filter(Jahr==max(Jahr)) |>
   mutate(Alter=factor(as.character(Alter),
@@ -298,11 +303,11 @@ ggsave("chart_pops_normed.png",
 
 
 ```{r}
-animate(anim,nframes=300)
+# animate(anim,nframes=300)
 ```
 
 ```{r}
-gemeinde_age_1y_gender_weekly |>
+gemeinde_1y_gender_weekly |>
   select(Jahr,Woche,Datum) |> 
   filter(Datum <= Sys.Date()) |>
 #  filter(mod(Woche,4)==1) |>
@@ -315,7 +320,7 @@ gemeinde_age_1y_gender_weekly |>
 
 
 ```{r}
-pop_bl_age_1y_gender_yearly |>
+pop_bl_1y_gender_yearly |>
    select(Jahr,Alter,Geschlecht,pop) |>
   group_by(Alter,Jahr,Geschlecht) |>
   summarise(pop=sum(pop)) |>
@@ -356,19 +361,71 @@ ggsave("chart_pop_aut.png",
 
 ```
 
+
+
+
+
+## test
+
+
+```{r}
+#| warnings: false
+pop_bl_1y_gender_yearly |>
+   select(Jahr,Alter,Geschlecht,pop) |>
+  group_by(Alter,Jahr,Geschlecht) |>
+  summarise(pop=sum(pop),.groups = "drop_last") |>
+  ungroup() |>
+    mutate(Geschlecht=factor(Geschlecht,levels=c("w","m"))) |>
+  filter(Jahr >= 2010) |>
+#  filter(Geschlecht=="w") |>
+ggplot( 
+      aes(
+        
+        x = ifelse(Geschlecht == "m", 
+                     -pop, pop), 
+                     y = factor(Alter), fill = Geschlecht)) +
+  geom_col(width=1.1) +
+  scale_x_symmetric(labels=abs) + #labels = \(x)abs(x/1000)) +
+  scale_y_discrete(breaks=as.character(seq(0,100,by=10))) +
+    labs(x = "Bevölkerung",
+       title="Bevölkerung nach Alter (Stand {closest_state})",
+       caption="Normiert auf Gesamtbevölkerung 100.000") +
+#  facet_wrap(vars(Jahr)) +
+  guides(fill=guide_legend(reverse=TRUE)) +
+  theme_minimal() +
+  theme(legend.position = "bottom",
+        legend.text = element_text(size=5),
+        legend.title = element_text(size=5),
+        legend.key.size = unit(0.3,"cm"),
+        plot.background=element_rect(color="white"),
+        axis.text=element_text(size=4),
+        axis.title=element_text(size=5),
+        strip.text=element_text(size=5),
+        title=element_text(size=6),
+        axis.text.x = element_text(angle=90)
+      ) +
+  transition_states(Jahr) -> anim
+```
+
+```{r}
+#| warnings: false
+animate(anim) |>
+  suppressWarnings()
+```
+
 ```{r}
 chart_pop_aut
 ```
 
 
 ```{r}
-pop_bl_age_1y_gender_yearly |>
+pop_bl_1y_gender_yearly |>
    select(Jahr,Alter,Geschlecht,pop) |>
   group_by(Alter,Jahr,Geschlecht) |>
-  summarise(pop=sum(pop)) |>
+  summarise(pop=sum(pop),.groups=) |>
   ungroup() |>
     mutate(Geschlecht=factor(Geschlecht,levels=c("w","m"))) |>
-  filter(Jahr >= 2010) |>
+  filter(Jahr == 2010) |>
 ggplot( 
       aes(x = ifelse(Geschlecht == "m", 
                      yes = -pop, 
@@ -415,5 +472,35 @@ anim <-
 anim
 
 anim_save("pop_aut.gif")
+```
+
+```{r}
+pop_bl_1y_gender_yearly |>
+   select(Jahr,Alter,Geschlecht,pop) |>
+  group_by(Alter,Jahr,Geschlecht) |>
+  summarise(pop=sum(pop)) |>
+  ungroup() |>
+    mutate(Geschlecht=factor(Geschlecht,levels=c("w","m"))) |>
+  filter(Jahr == 2010) |>
+  filter(Geschlecht=="m") |>
+ggplot( aes(x=pop,
+            y = Alter, 
+          fill = Geschlecht)) +
+  geom_col()  # width=1.1) 
+```
+```{r}
+pop_bl_1y_gender_yearly |>
+   select(Jahr,Alter,Geschlecht,pop) |>
+  group_by(Alter,Jahr,Geschlecht) |>
+  summarise(pop=sum(pop)) |>
+  ungroup() |>
+    mutate(Geschlecht=factor(Geschlecht,levels=c("w","m"))) |>
+  filter(Jahr >= 2010) |>
+ggplot( 
+      aes(x = ifelse(Geschlecht == "m", 
+                     yes = -pop, 
+                     no = pop), 
+                     y = Alter, fill = Geschlecht)) +
+  geom_col(width=1.1)
 ```
 

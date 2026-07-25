@@ -1,0 +1,143 @@
+---
+title: "Tote Deutschland"
+format: html
+editor: source
+---
+
+
+
+```{r}
+suppressPackageStartupMessages({
+  library(tidyverse)
+  library(magrittr)
+  library(fs)
+  library(here)
+  library(ggiraph)
+  library(scales)
+  library(gt)
+  library(ggmosaic)
+  library(htmlwidgets)
+  library(cowplot)
+  library(lubridate)
+  library(ggiraph)
+  })
+```
+
+
+```{r}
+today <- Sys.Date()
+curr_year <- year(today)
+```
+
+```{r}
+save_path <- path(here(),"r_data")
+```
+
+```{r}
+file_to_read <-
+  path(here(), "xlsx_data","deutschland_tote_pro_tag.csv")
+file_exists(file_to_read)
+
+data_raw <- read_csv(file_to_read)
+
+```
+
+
+
+```{r}
+file_to_read <-
+  path(here(), "xlsx_data","tote_d_bis_2020.csv")
+file_exists(file_to_read)
+
+data_raw_old <- read_csv(file_to_read)
+
+```
+
+
+```{r}
+data_raw <-
+  bind_rows(data_raw_old,
+            data_raw)
+data_raw |>
+  names()
+```
+
+```{r}
+data_raw |>
+  select(-Statistik,-Gebiet,-Geschlecht,-Alter, -Qualitaetskennzeichen) |>
+  filter(Sterbedatum  != "Insgesamt" ) |>
+  mutate(Datum=paste0(
+    Jahre,
+    "-",
+    str_sub(Sterbedatum,4,5),
+    "-",
+    str_sub(Sterbedatum,1,2)) |>
+      as.Date()
+  ) |>
+  mutate(Jahre=as.integer(Jahre)) |>
+  mutate(Sterbefaelle = as.integer(Sterbefaelle)) |>
+  drop_na() ->
+  data_complete
+```
+
+```{r}
+data_complete |>
+  mutate(Tag=day(Datum),
+                 Monat=month(Datum)) |>
+  filter(Monat %in% 6:8) |>
+  mutate(date=paste(Tag,Monat,sep=".")) |>
+  mutate(date=factor(date,levels=c(paste0(1:30,".6"),
+                                   paste0(1:31,".7"),
+                                   paste0(1:31,".8")))) ->
+  data_1
+level_vec <- with(data_1,levels(date))
+data_1 |>
+  ggplot(aes(date, Sterbefaelle, group=Jahre,
+             color=factor(Jahre))) +
+  geom_line() +
+  scale_x_discrete(
+    breaks  = level_vec[seq(1, 91, by = 5)]  # nur jede 5.
+  ) +
+  
+  scale_color_discrete() +
+  ylim(c(0,NA)) +
+  theme_minimal() +
+  theme(axis.text.x=element_text(angle=90,size=9)) +
+  labs(x="Datum",
+         y="Sterbefälle",
+       color="",
+       title="Tägliche Sterbefälle in Deutschland im Sommer") +
+  guides(color=guide_legend(reverse=TRUE)) 
+
+```
+
+```{r}
+data_complete |>
+  filter(month(Datum) %in% 6:7) |>
+  filter(Sterbefaelle > 3000)
+```
+
+```{r}
+ggplot(aes(, Sterbefaelle, group=Jahre)) +
+  geom_line() +
+  ylim(c(0,NA))
+```
+```{r}
+data_complete |>
+  filter(Datum >= as.Date("2026-06-01")) 
+```
+```{r}
+bev_d_raw <-
+  read_csv2(path("xlsx_data", "12411-0001_de_flat.csv"))
+```
+
+```{r}
+bev_d_raw |>
+  names()
+```
+```{r}
+bev_d_raw |>
+  select(time,value) |>
+  arrange(time)
+```
+
