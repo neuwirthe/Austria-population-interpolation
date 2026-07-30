@@ -1,0 +1,215 @@
+---
+title: "Todesfälle"
+format: html
+editor: source
+---
+
+
+```{r}
+suppressPackageStartupMessages({
+  library(tidyverse)
+  library(readxl)
+  library(scales)
+  library(fs)
+  library(here)
+  library(lubridate)
+  library(plotly)
+})
+```
+
+```{r}
+load(path("r_data","pop_death_aut_bl_complete.RData"))
+```
+```{r}
+theme_set(theme_minimal())
+```
+
+```{r}
+pop_death_aut_bl_complete |>
+  select(Jahr,Datum,Woche,BundeslandID,Anzahl) |>
+  filter(Jahr>=2010, Woche %in% 23:36,
+         BundeslandID==9) |>
+  group_by(Woche,Datum,Jahr) |>
+  summarise(Tote=sum(Anzahl)) |>
+  ungroup() |>
+  mutate(Datum_2026 = `year<-`(Datum,2026)) ->
+  chart_data
+chart_data |>
+  ggplot(aes(x=Datum_2026,y=Tote,group=Jahr,
+             color=factor(Jahr),
+             data_id=Jahr,
+             text=Jahr)) +
+  geom_line(size=0.1) +
+  geom_line(data=chart_data |>
+              filter(Jahr==2026),
+            aes(x=Datum_2026,y=Tote),
+            color="firebrick") +
+  scale_color_manual(values=rep("black", n_distinct(chart_data$Jahr)), guide="none") +
+  scale_y_continuous("Todesfälle",
+                     breaks=seq(0,500,by=50),
+                     limits=c(0,NA)) +
+  labs(title="Wöchentliche Todesfälle in Wien ab Anfang Juni seit 2010",
+       x="Datum") ->
+  p
+gp <- ggplotly(p, tooltip = "text") |>
+  layout(hoverlabel = list(bgcolor="white", bordercolor="black", font=list(color="black"))) |>
+  onRender("
+function(el, x) {
+  var gd = document.getElementById(el.id);
+  var hoverWidth = 4;
+  // Remember each trace's own original width so we restore the
+  // correct value (not a single hardcoded default) on unhover.
+  var originalWidths = gd.data.map(function(tr) {
+    return (tr.line && tr.line.width) ? tr.line.width : 1;
+  });
+  var lastCurve = null;
+
+  gd.on('plotly_hover', function(d) {
+    var curve = d.points[0].curveNumber;
+    if (curve === lastCurve) return;
+
+    if (lastCurve !== null) {
+      Plotly.restyle(gd, {'line.width': originalWidths[lastCurve]}, [lastCurve]);
+    }
+
+    Plotly.restyle(gd, {'line.width': hoverWidth}, [curve]);
+    lastCurve = curve;
+  });
+
+  gd.on('plotly_unhover', function(d) {
+    if (lastCurve !== null) {
+      Plotly.restyle(gd, {'line.width': originalWidths[lastCurve]}, [lastCurve]);
+      lastCurve = null;
+    }
+  });
+}
+")
+gp
+```
+
+
+```{r}
+pop_death_aut_bl_complete |>
+  select(Jahr,Datum,Woche,BundeslandID,Anzahl) |>
+  filter(Jahr>=2010, Woche %in% 23:36) |>
+  group_by(Woche,Datum,Jahr) |>
+  summarise(Tote=sum(Anzahl)) |>
+  ungroup() |>
+  mutate(Datum_2026 = `year<-`(Datum,2026)) ->
+  chart_data
+chart_data |>
+  ggplot(aes(x=Datum_2026,y=Tote,group=Jahr,
+             color=factor(Jahr),
+             data_id=Jahr,
+             text=Jahr)) +
+  geom_line(size=0.1) +
+  geom_line(data=chart_data |>
+              filter(Jahr==2026),
+            aes(x=Datum_2026,y=Tote),
+            color="firebrick") +
+  scale_color_manual(values=rep("black", n_distinct(chart_data$Jahr)), guide="none") +
+  scale_y_continuous("Todesfälle",
+                     breaks=seq(0,5000,by=200),
+                     limits=c(0,NA)) +
+  labs(title="Wöchentliche Todesfälle in Österreich ab Anfang Juni seit 2010",
+       x="Datum") ->
+  p
+gp <- ggplotly(p, tooltip = "text") |>
+  layout(hoverlabel = list(bgcolor="white", bordercolor="black", font=list(color="black"))) |>
+  onRender("
+function(el, x) {
+  var gd = document.getElementById(el.id);
+  var hoverWidth = 4;
+  // Remember each trace's own original width so we restore the
+  // correct value (not a single hardcoded default) on unhover.
+  var originalWidths = gd.data.map(function(tr) {
+    return (tr.line && tr.line.width) ? tr.line.width : 1;
+  });
+  var lastCurve = null;
+
+  gd.on('plotly_hover', function(d) {
+    var curve = d.points[0].curveNumber;
+    if (curve === lastCurve) return;
+
+    if (lastCurve !== null) {
+      Plotly.restyle(gd, {'line.width': originalWidths[lastCurve]}, [lastCurve]);
+    }
+
+    Plotly.restyle(gd, {'line.width': hoverWidth}, [curve]);
+    lastCurve = curve;
+  });
+
+  gd.on('plotly_unhover', function(d) {
+    if (lastCurve !== null) {
+      Plotly.restyle(gd, {'line.width': originalWidths[lastCurve]}, [lastCurve]);
+      lastCurve = null;
+    }
+  });
+}
+")
+gp
+```
+
+
+```{r}
+pop_death_aut_bl_complete |>
+  select(Jahr,Datum,Woche,BundeslandID,Anzahl) |>
+  filter(Jahr>=2010, Woche %in% 23:36,
+         BundeslandID==9) |>
+  group_by(Woche,Datum,Jahr) |>
+  summarise(Tote=sum(Anzahl)) |>
+  ungroup() |>
+  mutate(Datum_2026 = `year<-`(Datum,2026)) ->
+  chart_data
+chart_data |>
+  ggplot(aes(x=Datum_2026,y=Tote,group=Jahr,
+             color=factor(Jahr),
+             data_id=Jahr,
+             text=Jahr)) +
+  geom_line(size=0.1) +
+  geom_line(data=chart_data |>
+              filter(Jahr==2026),
+            aes(x=Datum_2026,y=Tote),
+            color="firebrick") +
+  scale_color_manual(values=rep("black", n_distinct(chart_data$Jahr)), guide="none") +
+  scale_y_continuous("Todesfälle",
+                     breaks=seq(0,500,by=50),
+                     limits=c(0,NA)) +
+  labs(title="Wöchentliche Todesfälle in Wien ab Anfang Juni seit 2010",
+       x="Datum") ->
+  p
+gp <- ggplotly(p, tooltip = "text") |>
+  layout(hoverlabel = list(bgcolor="white", bordercolor="black", font=list(color="black"))) |>
+  onRender("
+function(el, x) {
+  var gd = document.getElementById(el.id);
+  var hoverWidth = 4;
+  // Remember each trace's own original width so we restore the
+  // correct value (not a single hardcoded default) on unhover.
+  var originalWidths = gd.data.map(function(tr) {
+    return (tr.line && tr.line.width) ? tr.line.width : 1;
+  });
+  var lastCurve = null;
+
+  gd.on('plotly_hover', function(d) {
+    var curve = d.points[0].curveNumber;
+    if (curve === lastCurve) return;
+
+    if (lastCurve !== null) {
+      Plotly.restyle(gd, {'line.width': originalWidths[lastCurve]}, [lastCurve]);
+    }
+
+    Plotly.restyle(gd, {'line.width': hoverWidth}, [curve]);
+    lastCurve = curve;
+  });
+
+  gd.on('plotly_unhover', function(d) {
+    if (lastCurve !== null) {
+      Plotly.restyle(gd, {'line.width': originalWidths[lastCurve]}, [lastCurve]);
+      lastCurve = null;
+    }
+  });
+}
+")
+gp
+```

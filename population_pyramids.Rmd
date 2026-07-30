@@ -176,7 +176,7 @@ gemeinde_1y_gender_weekly |>
   select(GKZ,Name) |>
   distinct()) |>
   mutate(Woche=as.integer(Woche)) ->
-  gemeinde_age_1y_gender_weekly
+  gemeinde_1y_gender_weekly
 ```
 
 ```{r}
@@ -368,7 +368,7 @@ ggsave("chart_pop_aut.png",
 ## test
 
 
-```{r}
+```{r, warnings=FALSE}
 #| warnings: false
 pop_bl_1y_gender_yearly |>
    select(Jahr,Alter,Geschlecht,pop) |>
@@ -412,6 +412,54 @@ ggplot(
 animate(anim) |>
   suppressWarnings()
 ```
+
+
+```{r, warnings=FALSE}
+#| warnings: false
+gemeinde_1y_gender_yearly |>
+   select(Jahr,Alter,Geschlecht,pop) |>
+  group_by(Alter,Jahr,Geschlecht) |>
+  summarise(pop=sum(pop),.groups = "drop_last") |>
+  ungroup() |>
+    mutate(Geschlecht=factor(Geschlecht,levels=c("w","m"))) |>
+  filter(Jahr >= 2010) |>
+#  filter(Geschlecht=="w") |>
+ggplot( 
+      aes(
+        
+        x = ifelse(Geschlecht == "m", 
+                     -pop, pop), 
+                     y = factor(Alter), fill = Geschlecht)) +
+  geom_col(width=1.1) +
+  scale_x_symmetric(labels=abs) + #labels = \(x)abs(x/1000)) +
+  scale_y_discrete(breaks=as.character(seq(0,100,by=10))) +
+    labs(x = "Bevölkerung",
+       title="Bevölkerung nach Alter (Stand {closest_state})",
+       caption="Normiert auf Gesamtbevölkerung 100.000") +
+#  facet_wrap(vars(Jahr)) +
+  guides(fill=guide_legend(reverse=TRUE)) +
+  theme_minimal() +
+  theme(legend.position = "bottom",
+        legend.text = element_text(size=5),
+        legend.title = element_text(size=5),
+        legend.key.size = unit(0.3,"cm"),
+        plot.background=element_rect(color="white"),
+        axis.text=element_text(size=4),
+        axis.title=element_text(size=5),
+        strip.text=element_text(size=5),
+        title=element_text(size=6),
+        axis.text.x = element_text(angle=90)
+      ) +
+  transition_states(Jahr,transition_length=0) -> anim
+```
+
+```{r}
+#| warnings: false
+animate(anim) |>
+  suppressWarnings()
+```
+
+
 
 ```{r}
 chart_pop_aut
