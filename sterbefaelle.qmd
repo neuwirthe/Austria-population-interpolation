@@ -107,7 +107,6 @@ sterb_raw_5y <-
   read_csv2("https://data.statistik.gv.at/data/OGD_gest_kalwo_alter_GEST_KALWOCHE_5J_100.csv")
 ```
 
-
 ```{r}
 sterb_raw_5y %>%
   mutate(Jahr=str_sub(`C-KALWOCHE-0`,6,9) %>% as.integer()) %>%
@@ -842,7 +841,7 @@ saveWidget(yyy,
 
 
 
-```{r}
+```{}
 pop_death_aut_bl_complete |>
   filter(Jahr >= 2018) |>
   mutate(Alter_65 = ifelse(Altersgruppe <= 13,"<65","65+")) |>

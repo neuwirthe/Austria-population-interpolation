@@ -68,6 +68,13 @@ pop_GKZ_1y_gender_yearly |>
   pop_BKZ_1y_gender_yearly
 ```
 
+
+```{r}
+pop_BKZ_1y_gender_yearly |> 
+    tail()
+
+```
+
 ```{r}
 pop_BKZ_1y_gender_yearly |>
   left_join(namen_bezirke |>
@@ -81,12 +88,27 @@ save(pop_BKZ_1y_gender_yearly,
                "pop_BKZ_1y_gender_yearly.RData"))  
 ```
 
+```{r}
+pop_BKZ_1y_gender_yearly |>
+  select(Jahr, BKZ, Alter, Geschlecht, pop) |>
+  mutate(BundeslandID=floor(BKZ/100)) |>
+  group_by(Jahr,BundeslandID,Alter,Geschlecht) |>
+  summarise(pop = sum(pop)) ->
+  pop_aut_bl_1y_gender_yearly
+  pop_aut_bl_1y_gender_yearly |>
+      save(file=path(save_path,"pop_aut_bl_1y_gender_yearly.Rdata"))
+```
 
+```{r}
+pop_aut_bl_1y_gender_weekly
+```
 
 ```{r}
 dates_years_weeks <-
   tibble(
-    Datum=seq(as.Date("2001-12-31"),today,by="7 days"),
+    Datum=seq(as.Date("2001-12-31"),
+              as.Date(paste0(year(Sys.Date()),"-12-31")),
+              by="7 days"),
     Jahr=isoyear(Datum),
     Woche=isoweek(Datum)
   ) |>
@@ -96,9 +118,6 @@ dates_years_weeks <-
   mutate(Jahr_Woche=Jahr+(Woche-1)/total_weeks) |>
   select(-total_weeks) |>
   mutate_at(vars(Jahr,Woche),as.integer)
-```
-```{r}
-dates_years_weeks |> tail()
 ```
 
 ```{r}
@@ -193,6 +212,8 @@ pop_aut_bl_1y_gender_weekly |>
   summarise(pop=sum(pop)) |>
   ungroup() ->
 pop_aut_bl_5y_gender_weekly  
+pop_aut_bl_5y_gender_weekly |>
+  tail()
 ```
 
 ```{r}
