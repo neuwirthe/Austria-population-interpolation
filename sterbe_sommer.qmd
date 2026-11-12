@@ -14,6 +14,7 @@ suppressPackageStartupMessages({
   library(here)
   library(lubridate)
   library(plotly)
+  library(htmlwidgets)
 })
 ```
 
@@ -111,7 +112,7 @@ chart_data |>
   scale_y_continuous("Todesfälle",
                      breaks=seq(0,5000,by=200),
                      limits=c(0,NA)) +
-  labs(title="Wöchentliche Todesfälle in Österreich ab Anfang Juni seit 2010",
+  labs(title="Wöchentliche Todesfälle in Österreich<br><sup>ab Anfang Juni seit 2010</sup>",
        x="Datum") ->
   p
 gp <- ggplotly(p, tooltip = "text") |>
@@ -213,3 +214,9 @@ function(el, x) {
 ")
 gp
 ```
+
+
+```{r}
+pop_death_aut_bl_complete
+```
+

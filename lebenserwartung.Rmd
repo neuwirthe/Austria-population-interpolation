@@ -107,7 +107,7 @@ life_expectancy_gender |>
              linetype=Alter)) +
   geom_line() +
   scale_x_continuous(breaks=c(seq(1900,2020,by=10),2024)) +
-  scale_y_continuous(minor_breaks = 50:100) +
+  scale_y_continuous(breaks = seq(0,100,by=2)) +
   theme_minimal() +
   scale_linetype_discrete("Lebenserwartung") +
   guides(linetype=guide_legend(reverse=TRUE)) +

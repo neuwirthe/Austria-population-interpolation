@@ -106,6 +106,10 @@ datum_jahr_woche |>
 sterb_raw_5y <-
   read_csv2("https://data.statistik.gv.at/data/OGD_gest_kalwo_alter_GEST_KALWOCHE_5J_100.csv")
 ```
+```{r}
+sterb_raw_5y |>
+  tail()
+```
 
 ```{r}
 sterb_raw_5y %>%

@@ -17,8 +17,11 @@ suppressPackageStartupMessages({
 ```
 
 ```{r}
-load(path(here(),"r_data","pop_GKZ_age_1y_gender_yearly.RData"))
+load(path(here(),"r_data","pop_GKZ_1y_gender_yearly.RData"))
 ```
+
+
+
 ```{r}
 pop_GKZ_age_1y_gender_yearly |>
   filter(Jahr==max(Jahr)) |>
@@ -41,5 +44,15 @@ pop_GKZ_age_1y_gender_yearly |>
               dec_mark=",") |>
   fmt_number(columns=2:3,sep_mark = ".",
              decimals=0)
+```
+
+```{r}
+pop_GKZ_1y_gender_yearly |>
+  filter(Jahr==2025) |>
+  filter(GKZ>=90000) |>
+  mutate(wb16=ifelse(Alter >=16,1,0)*pop) |>
+  group_by(GKZ) |>
+  summarise(pop=sum(pop),wb16=sum(wb16)) |>
+  clipr::write_clip()
 ```
 

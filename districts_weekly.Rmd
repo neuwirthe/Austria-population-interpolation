@@ -100,7 +100,7 @@ pop_BKZ_1y_gender_yearly |>
 ```
 
 ```{r}
-pop_aut_bl_1y_gender_weekly
+pop_aut_bl_1y_gender_yearly
 ```
 
 ```{r}
